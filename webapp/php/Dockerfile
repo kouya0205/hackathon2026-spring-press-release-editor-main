@@ -27,4 +27,6 @@ RUN composer install --optimize-autoloader --prefer-dist
 
 EXPOSE 8080
 
-CMD ["php", "-d", "display_errors=0", "-S", "0.0.0.0:8080", "-t", "public", "public/router.php"]
+# アプリ側で5MB制限を実施するため、PHP側はそれより大きく許可してリクエストを受け取れるようにする
+# （post_max_size 超過時は $_FILES が空になり「画像ファイルが必要です」と誤ったエラーになる）
+CMD ["php", "-d", "display_errors=0", "-d", "upload_max_filesize=12M", "-d", "post_max_size=14M", "-S", "0.0.0.0:8080", "-t", "public", "public/router.php"]
