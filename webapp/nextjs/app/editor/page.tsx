@@ -424,6 +424,29 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
 
   const isLinkActive = editor?.isActive('link') ?? false;
 
+  //HTML関連
+  const handleDragOver = (event) => {
+    event.preventDefault()
+  }
+
+  const handleDrop = (event) => {
+    event.preventDefault()
+    const file = event.dataTransfer.files[0]
+
+    if (!file) return
+
+    if (file.type === 'text/html') {
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        const htmlContent = e.target.result
+        editor?.commands.setContent(htmlContent, false) // false で HTML として解釈
+      }
+      reader.readAsText(file)
+    } else {
+      alert('HTMLファイルをドロップしてください')
+    }
+  }
+
   return (
     <div className={styles.container}>
       <header className={styles.header}>
@@ -443,7 +466,7 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
       </header>
 
       <main className={styles.main}>
-        <div className={styles.editorWrapper}>
+        <div className={styles.editorWrapper} onDrop={handleDrop} onDragOver={handleDragOver}>
           <div className={styles.titleInputWrapper}>
             <input
               type="text"
