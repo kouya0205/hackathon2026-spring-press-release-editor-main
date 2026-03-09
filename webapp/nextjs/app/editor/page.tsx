@@ -9,6 +9,7 @@ import Paragraph from '@tiptap/extension-paragraph';
 import Bold from '@tiptap/extension-bold';
 import Text from '@tiptap/extension-text';
 import Link from '@tiptap/extension-link';
+import CharacterCount from '@tiptap/extension-character-count';
 import Italic from '@tiptap/extension-italic';
 import Underline from '@tiptap/extension-underline';
 import { BulletList, OrderedList, ListItem } from '@tiptap/extension-list';
@@ -99,7 +100,10 @@ interface ImageDialogState {
 }
 
 function Editor({ initialTitle, initialContent }: EditorProps) {
+  const MAX_CHAR_TITLE = 100;
+  const MAX_CHAR_MAIN = 500;
   const [title, setTitle] = useState(initialTitle);
+  const [count, setCount] = useState(0);
   const [linkDialog, setLinkDialog] = useState<LinkDialogState>({
     isOpen: false,
     url: '',
@@ -127,6 +131,10 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
           target: '_blank',
         },
       }),
+      CharacterCount.configure({
+        limit: MAX_CHAR_MAIN,
+        //textCounter: (text) => text.length
+      }),
       Bold,
       Italic,
       Underline,
@@ -136,9 +144,15 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
       Image.configure({
         allowBase64: true,
       }),
+      CharacterCount
+      Image,
     ],
     content: initialContent,
-    immediatelyRender: false
+    immediatelyRender: false,
+    onUpdate: ({ editor }) => {
+      const textWithNewlines = editor.getText({ blockSeparator: '\n' });
+      setCount(textWithNewlines.length); 
+    },
   });
 
   const { isPending, mutate } = useSavePressReleaseMutation();
@@ -281,13 +295,24 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
             <input
               type="text"
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              onChange={(e) => {
+                const newValue = e.target.value
+                if (newValue.length <= MAX_CHAR_TITLE) { // ← 文字数制限
+                  setTitle(newValue)
+                }
+              }}
               placeholder="タイトルを入力してください"
               className={styles.titleInput}
             />
           </div>
 
           <div className={styles.toolbar}>
+            <div>
+                本文文字数: {editor?.storage.characterCount.characters()} / {MAX_CHAR_MAIN}
+            </div>
+            <div>
+                タイトル文字数: {title?.length} / {MAX_CHAR_TITLE}
+            </div>
             <button
               type="button"
               onClick={openLinkDialog}
