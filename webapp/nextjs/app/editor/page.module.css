@@ -74,6 +74,44 @@
   box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
 }
 
+.toolbar {
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.toolbarButton {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  background-color: #f8f9fa;
+  color: #333;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.toolbarButton:hover:not(:disabled) {
+  background-color: #e9ecef;
+}
+
+.toolbarButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.toolbarButtonActive {
+  background-color: #007bff;
+  color: white;
+  border-color: #007bff;
+}
+
+.toolbarButtonActive:hover:not(:disabled) {
+  background-color: #0056b3;
+  border-color: #0056b3;
+}
+
 .tiptap {
   outline: none;
   min-height: 400px;
@@ -83,6 +121,34 @@
   margin: 1em 0;
   line-height: 1.6;
   font-size: 1rem;
+}
+
+.tiptap ul,
+.tiptap ol {
+  margin: 1em 0;
+  padding-left: 2em;
+  list-style-position: outside;
+}
+
+.tiptap ul {
+  list-style-type: disc;
+}
+
+.tiptap ol {
+  list-style-type: decimal;
+}
+
+.tiptap li {
+  margin: 0.25em 0;
+  line-height: 1.6;
+}
+
+.tiptap li p {
+  margin: 0.25em 0;
+}
+
+.tiptap li p:first-child {
+  margin-top: 0;
 }
 
 .loading,

@@ -6,8 +6,12 @@ import { useEditor, EditorContent } from '@tiptap/react';
 import Document from '@tiptap/extension-document';
 import Heading from '@tiptap/extension-heading';
 import Paragraph from '@tiptap/extension-paragraph';
+import Bold from '@tiptap/extension-bold';
 import Text from '@tiptap/extension-text';
 import Link from '@tiptap/extension-link';
+import Italic from '@tiptap/extension-italic';
+import Underline from '@tiptap/extension-underline';
+import { BulletList, OrderedList, ListItem } from '@tiptap/extension-list';
 import type { PressRelease } from '@/lib/types';
 import styles from './page.module.css';
 
@@ -110,6 +114,12 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
           target: '_blank',
         },
       })
+      Bold,
+      Italic,
+      Underline,
+      BulletList,
+      OrderedList,
+      ListItem,
     ],
     content: initialContent,
     immediatelyRender: false
@@ -227,6 +237,54 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
           </div>
 
           <EditorContent editor={editor} />
+          <div className={styles.toolbar}>
+            <button
+              type="button"
+              onClick={() => editor?.chain().focus().toggleBold().run()}
+              className={`${styles.toolbarButton} ${editor?.isActive('bold') ? styles.toolbarButtonActive : ''}`}
+              title="太字 (Ctrl+B)"
+              disabled={!editor}
+            >
+              太字
+            </button>
+            <button
+              type="button"
+              onClick={() => editor?.chain().focus().toggleItalic().run()}
+              className={`${styles.toolbarButton} ${editor?.isActive('italic') ? styles.toolbarButtonActive : ''}`}
+              title="斜体 (Ctrl+I)"
+              disabled={!editor}
+            >
+              斜体
+            </button>
+            <button
+              type="button"
+              onClick={() => editor?.chain().focus().toggleUnderline().run()}
+              className={`${styles.toolbarButton} ${editor?.isActive('underline') ? styles.toolbarButtonActive : ''}`}
+              title="下線"
+              disabled={!editor}
+            >
+              下線
+            </button>
+            <button
+              type="button"
+              onClick={() => editor?.chain().focus().toggleBulletList().run()}
+              className={`${styles.toolbarButton} ${editor?.isActive('bulletList') ? styles.toolbarButtonActive : ''}`}
+              title="箇条書き (Ctrl+Shift+8)"
+              disabled={!editor}
+            >
+              箇条書き
+            </button>
+            <button
+              type="button"
+              onClick={() => editor?.chain().focus().toggleOrderedList().run()}
+              className={`${styles.toolbarButton} ${editor?.isActive('orderedList') ? styles.toolbarButtonActive : ''}`}
+              title="番号付きリスト (Ctrl+Shift+7)"
+              disabled={!editor}
+            >
+              番号付き
+            </button>
+          </div>
+          <EditorContent editor={editor} className={styles.tiptap}/>
         </div>
       </main>
 
