@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEditor, EditorContent } from '@tiptap/react';
 import Document from '@tiptap/extension-document';
@@ -118,6 +118,7 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
     alt: '',
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const requestSaveRef = useRef<() => void>(undefined);
 
   const editor = useEditor({
     extensions: [
@@ -159,6 +160,7 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
                 })
                 .focus()
                 .run()
+              requestSaveRef.current?.();
             }
           })
         },
@@ -184,6 +186,7 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
                 })
                 .focus()
                 .run()
+              requestSaveRef.current?.();
             }
           })
         },
@@ -203,6 +206,56 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
   });
 
   const { isPending, mutate } = useSavePressReleaseMutation();
+  const [lastSavedData, setLastSavedData] = useState({ title: initialTitle, content: initialContent });
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+
+  // 最新ステートをRefに保持
+  const currentStateRef = useRef({ title, editor, charCount, isPending });
+  useEffect(() => {
+    currentStateRef.current = { title, editor, charCount, isPending };
+  }, [title, editor, charCount, isPending]);
+
+  const requestSave = useCallback(() => {
+    const state = currentStateRef.current;
+    if (!state.editor || state.isPending) return;
+
+    const currentContent = JSON.stringify(state.editor.getJSON());
+
+    // 文字数制限オーバー時は自動保存しない
+    if (state.title.length > MAX_CHAR_TITLE || state.charCount > MAX_CHAR_MAIN) {
+      return;
+    }
+
+    setLastSavedData((prev) => {
+      // 変更がない場合はスキップ (Phase 3)
+      if (prev.title === state.title && prev.content === currentContent) {
+        return prev;
+      }
+
+      console.log('save');
+      setLastSavedAt(new Date());
+      mutate({
+        title: state.title,
+        content: currentContent,
+      });
+
+      // 最後に保存した内容を更新
+      return { title: state.title, content: currentContent };
+    });
+  }, [mutate, MAX_CHAR_TITLE, MAX_CHAR_MAIN]);
+
+  useEffect(() => {
+    requestSaveRef.current = requestSave;
+  }, [requestSave]);
+
+  // 5秒おきのオートセーブ (Phase 1)
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      requestSaveRef.current?.();
+    }, 5000);
+
+    return () => clearInterval(intervalId);
+  }, []);
 
   const handleSave = () => {
     if (!editor) return;
@@ -218,10 +271,13 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
     }
     setValidationError('');
 
+    const currentContent = JSON.stringify(editor.getJSON());
+    setLastSavedAt(new Date());
     mutate({
       title,
-      content: JSON.stringify(editor.getJSON()),
+      content: currentContent,
     });
+    setLastSavedData({ title, content: currentContent });
   };
 
   const openLinkDialog = useCallback(() => {
@@ -301,6 +357,7 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
       })
       .run();
 
+    requestSaveRef.current?.();
     setImageDialog({ isOpen: false, url: '', alt: '' });
   }, [editor, imageDialog]);
 
@@ -329,6 +386,7 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
           src: result,
           alt: file.name,
         }).run();
+        requestSaveRef.current?.();
       };
       reader.readAsDataURL(file);
       e.target.value = '';
@@ -342,9 +400,18 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
     <div className={styles.container}>
       <header className={styles.header}>
         <h1 className={styles.title}>プレスリリースエディター</h1>
-        <button onClick={handleSave} className={styles.saveButton} disabled={isPending}>
-          {isPending ? '保存中...' : '保存'}
-        </button>
+        <div className={styles.headerActions}>
+          {isPending ? (
+            <span className={styles.savedMessage}>保存中...</span>
+          ) : lastSavedAt ? (
+            <span className={styles.savedMessage}>
+              {lastSavedAt.toLocaleTimeString('ja-JP')}に保存しました
+            </span>
+          ) : null}
+          <button onClick={handleSave} className={styles.saveButton} disabled={isPending}>
+            保存
+          </button>
+        </div>
       </header>
 
       <main className={styles.main}>
@@ -356,7 +423,7 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
               onChange={(e) => {
                 const newValue = e.target.value
                 //if (newValue.length <= MAX_CHAR_TITLE) { // ← 文字数制限
-                  setTitle(newValue)
+                setTitle(newValue)
                 //}
               }}
               placeholder="タイトルを入力してください"
@@ -370,10 +437,10 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
           )}
           <div className={styles.toolbar}>
             <div>
-                本文文字数: {charCount} / {MAX_CHAR_MAIN}
+              本文文字数: {charCount} / {MAX_CHAR_MAIN}
             </div>
             <div>
-                タイトル文字数: {title?.length} / {MAX_CHAR_TITLE}
+              タイトル文字数: {title?.length} / {MAX_CHAR_TITLE}
             </div>
             <button
               type="button"
