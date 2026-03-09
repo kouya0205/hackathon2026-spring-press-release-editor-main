@@ -25,7 +25,7 @@ const { data, isPending, isError } = useQuery({
 const title = ref('')
 
 const editor = useEditor({
-  extensions: [Document, Heading, Paragraph, Text],
+  extensions: [Document, Heading, Paragraph, Text, Bold],
   content: '',
 })
 

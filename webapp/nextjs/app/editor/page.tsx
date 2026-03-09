@@ -6,7 +6,10 @@ import { useEditor, EditorContent } from '@tiptap/react';
 import Document from '@tiptap/extension-document';
 import Heading from '@tiptap/extension-heading';
 import Paragraph from '@tiptap/extension-paragraph';
+import Bold from '@tiptap/extension-bold';
 import Text from '@tiptap/extension-text';
+import Italic from '@tiptap/extension-italic';
+import Underline from '@tiptap/extension-underline';
 import type { PressRelease } from '@/lib/types';
 import styles from './page.module.css';
 
@@ -82,7 +85,7 @@ interface EditorProps {
 function Editor({ initialTitle, initialContent }: EditorProps) {
   const [title, setTitle] = useState(initialTitle);
   const editor = useEditor({
-    extensions: [Document, Heading, Paragraph, Text],
+    extensions: [Document, Heading, Paragraph, Text, Bold, Italic, Underline],
     content: initialContent,
     immediatelyRender: false
   });
@@ -117,8 +120,49 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
               placeholder="タイトルを入力してください"
               className={styles.titleInput}
             />
+            <div className="button-group">
+            <button
+              onClick={() => editor?.chain().focus().toggleBold().run()}
+              className={editor?.isActive('bold') ? 'is-active' : ''}
+            >
+              Toggle bold
+            </button>
+            <button onClick={() => editor?.chain().focus().setBold().run()} disabled={editor?.isActive('bold')}>
+                Set bold
+            </button>
+            <button onClick={() => editor?.chain().focus().unsetBold().run()} disabled={!editor?.isActive('bold')}>
+              Unset bold
+            </button>
+            <button
+              onClick={() => editor?.chain().focus().toggleItalic().run()}
+              className={editor?.isActive('italic') ? 'is-active' : ''}
+            >
+              Toggle italic
+            </button>
+            <button onClick={() => editor?.chain().focus().setItalic().run()} disabled={editor?.isActive('italic')}>
+              Set italic
+            </button>
+            <button onClick={() => editor?.chain().focus().unsetItalic().run()} disabled={!editor?.isActive('italic')}>
+              Unset italic
+            </button>
+            <button
+            onClick={() => editor?.chain().focus().toggleUnderline().run()}
+            className={editor?.isActive('underline') ? 'is-active' : ''}
+          >
+            Toggle underline
+          </button>
+          <button onClick={() => editor?.chain().focus().setUnderline().run()} disabled={editor?.isActive('underline')}>
+            Set underline
+          </button>
+          <button
+            onClick={() => editor?.chain().focus().unsetUnderline().run()}
+            disabled={!editor?.isActive('underline')}
+          >
+            Unset underline
+          </button>
           </div>
-          <EditorContent editor={editor} />
+        </div>
+        <EditorContent editor={editor} />
         </div>
       </main>
     </div>
