@@ -63,6 +63,19 @@ class ImageResizer
     }
 
     /**
+     * 単一の data URL 画像をリサイズする（アップロード用）
+     *
+     * 長辺が MAX_LONG_SIDE を超える場合にリサイズする。
+     *
+     * @param string $dataUrl data:image/png;base64,... 形式の文字列
+     * @return string|null リサイズ後の data URL。失敗時は null
+     */
+    public static function processImageDataUrl(string $dataUrl): ?string
+    {
+        return self::resizeBase64Image($dataUrl);
+    }
+
+    /**
      * base64  data URL 形式の画像をリサイズする
      *
      * 長辺が MAX_LONG_SIDE 以下の場合はそのまま返す。

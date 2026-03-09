@@ -27,4 +27,4 @@ RUN composer install --optimize-autoloader --prefer-dist
 
 EXPOSE 8080
 
-CMD ["php", "-d", "display_errors=0", "-S", "0.0.0.0:8080", "-t", "public"]
+CMD ["php", "-d", "display_errors=0", "-S", "0.0.0.0:8080", "-t", "public", "public/router.php"]
