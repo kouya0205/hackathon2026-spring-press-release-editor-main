@@ -242,7 +242,7 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
     if (!state.editor || state.isPending) return;
 
     const currentContent = JSON.stringify(state.editor.getJSON());
-
+    
     // 文字数制限オーバー時は自動保存しない
     if (state.title.length > MAX_CHAR_TITLE || state.charCount > MAX_CHAR_MAIN) {
       return;
