@@ -167,7 +167,7 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
       ListItem,
       Image,
       FileHandler.configure({
-        allowedMimeTypes: ['image/png', 'image/jpeg', 'image/gif', 'image/webp'],
+        allowedMimeTypes: ['image/png', 'image/jpeg', 'image/gif'],
         onDrop: (currentEditor, files, pos) => {
           const file = files[0];
           if (!file) return;

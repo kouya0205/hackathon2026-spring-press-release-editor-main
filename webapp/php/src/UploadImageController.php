@@ -11,17 +11,20 @@ use Psr\Http\Message\UploadedFileInterface;
  *
  * POST /images/upload エンドポイントの処理を担当。
  * ローカルからアップロードされた画像を受け取り、長辺が600pxを超える場合はリサイズして返す。
+ *
+ * 制限事項:
+ * - サイズ: 5MB以下
+ * - 対応形式: .jpg, .png, .gif（MIME: image/jpeg, image/png, image/gif）
  */
 class UploadImageController
 {
     private const ALLOWED_MIME_TYPES = [
         'image/png',
         'image/jpeg',
-        'image/jpg',
         'image/gif',
     ];
 
-    private const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+    private const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
     /**
      * 画像をアップロードし、必要に応じてリサイズした data URL を返す
@@ -40,6 +43,11 @@ class UploadImageController
             $uploadedFiles = $request->getUploadedFiles();
 
             if (!isset($uploadedFiles['image']) || !($uploadedFiles['image'] instanceof UploadedFileInterface)) {
+                // POST で Content-Length が 0 より大きいのにファイルが空 = PHP の post_max_size 超過の可能性
+                $contentLength = (int) ($request->getServerParams()['CONTENT_LENGTH'] ?? 0);
+                if ($contentLength > 0) {
+                    return self::jsonError($response, 'REQUEST_TOO_LARGE', 'リクエストが大きすぎます。5MB以下の画像をアップロードしてください。', 400);
+                }
                 return self::jsonError($response, 'INVALID_REQUEST', '画像ファイルが必要です', 400);
             }
 
@@ -54,12 +62,12 @@ class UploadImageController
             $stream->close();
 
             if (strlen($contents) > self::MAX_FILE_SIZE) {
-                return self::jsonError($response, 'FILE_TOO_LARGE', 'ファイルサイズが10MBを超えています', 400);
+                return self::jsonError($response, 'FILE_TOO_LARGE', 'ファイルサイズが5MBを超えています', 400);
             }
 
             $clientMediaType = $file->getClientMediaType();
             if ($clientMediaType === null || !in_array(strtolower($clientMediaType), self::ALLOWED_MIME_TYPES, true)) {
-                return self::jsonError($response, 'INVALID_TYPE', '対応形式: JPEG, PNG, GIF, WebP', 400);
+                return self::jsonError($response, 'INVALID_TYPE', '対応形式: .jpg, .png, .gif（5MB以下）', 400);
             }
 
             $dataUrl = 'data:' . $clientMediaType . ';base64,' . base64_encode($contents);
