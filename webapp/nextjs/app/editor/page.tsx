@@ -104,6 +104,7 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
   const MAX_CHAR_MAIN = 500;
   const [title, setTitle] = useState(initialTitle);
   const [charCount, setCharCount] = useState(0);
+  const [validationError, setValidationError] = useState('');
   const [linkDialog, setLinkDialog] = useState<LinkDialogState>({
     isOpen: false,
     url: '',
@@ -131,9 +132,7 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
           target: '_blank',
         },
       }),
-      CharacterCount.configure({
-        limit: MAX_CHAR_MAIN,
-      }),
+      CharacterCount,
       Bold,
       Italic,
       Underline,
@@ -143,8 +142,6 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
       Image.configure({
         allowBase64: true,
       }),
-      CharacterCount
-      Image,
     ],
     content: initialContent,
     immediatelyRender: false,
@@ -160,6 +157,17 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
 
   const handleSave = () => {
     if (!editor) return;
+
+    //文字数制限のチェック
+    if (title.length > MAX_CHAR_TITLE) {
+      setValidationError(`タイトルは${MAX_CHAR_TITLE}文字以内にしてください`);
+      return;
+    }
+    if (charCount > MAX_CHAR_MAIN) {
+      setValidationError(`本文は${MAX_CHAR_MAIN}文字以内で入力してください`);
+      return;
+    }
+    setValidationError('');
 
     mutate({
       title,
@@ -298,15 +306,19 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
               value={title}
               onChange={(e) => {
                 const newValue = e.target.value
-                if (newValue.length <= MAX_CHAR_TITLE) { // ← 文字数制限
+                //if (newValue.length <= MAX_CHAR_TITLE) { // ← 文字数制限
                   setTitle(newValue)
-                }
+                //}
               }}
               placeholder="タイトルを入力してください"
               className={styles.titleInput}
             />
           </div>
-
+          {validationError && (
+            <div style={{ color: 'red', marginTop: 4 }}>
+              {validationError}
+            </div>
+          )}
           <div className={styles.toolbar}>
             <div>
                 本文文字数: {charCount} / {MAX_CHAR_MAIN}
