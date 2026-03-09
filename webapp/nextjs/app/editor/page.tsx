@@ -7,6 +7,7 @@ import Document from '@tiptap/extension-document';
 import Heading from '@tiptap/extension-heading';
 import Paragraph from '@tiptap/extension-paragraph';
 import Text from '@tiptap/extension-text';
+import { BulletList, OrderedList, ListItem } from '@tiptap/extension-list';
 import type { PressRelease } from '@/lib/types';
 import styles from './page.module.css';
 
@@ -82,7 +83,7 @@ interface EditorProps {
 function Editor({ initialTitle, initialContent }: EditorProps) {
   const [title, setTitle] = useState(initialTitle);
   const editor = useEditor({
-    extensions: [Document, Heading, Paragraph, Text],
+    extensions: [Document, Heading, Paragraph, Text, BulletList, OrderedList, ListItem],
     content: initialContent,
     immediatelyRender: false
   });
@@ -118,7 +119,27 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
               className={styles.titleInput}
             />
           </div>
-          <EditorContent editor={editor} />
+          <div className={styles.toolbar}>
+            <button
+              type="button"
+              onClick={() => editor?.chain().focus().toggleBulletList().run()}
+              className={`${styles.toolbarButton} ${editor?.isActive('bulletList') ? styles.toolbarButtonActive : ''}`}
+              title="箇条書き (Ctrl+Shift+8)"
+              disabled={!editor}
+            >
+              箇条書き
+            </button>
+            <button
+              type="button"
+              onClick={() => editor?.chain().focus().toggleOrderedList().run()}
+              className={`${styles.toolbarButton} ${editor?.isActive('orderedList') ? styles.toolbarButtonActive : ''}`}
+              title="番号付きリスト (Ctrl+Shift+7)"
+              disabled={!editor}
+            >
+              番号付き
+            </button>
+          </div>
+          <EditorContent editor={editor} className={styles.tiptap}/>
         </div>
       </main>
     </div>
