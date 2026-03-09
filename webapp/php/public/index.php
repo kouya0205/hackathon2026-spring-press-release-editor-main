@@ -15,6 +15,7 @@ require_once __DIR__ . '/../vendor/autoload.php';
 
 use App\GetPressReleaseController;
 use App\SavePressReleaseController;
+use App\UploadImageController;
 use Slim\Factory\AppFactory;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -33,5 +34,6 @@ $app->add(function (ServerRequestInterface $request, $handler): ResponseInterfac
 // Define routes
 $app->get('/press-releases/{id}', GetPressReleaseController::class . '::handle');
 $app->post('/press-releases/{id}', SavePressReleaseController::class . '::handle');
+$app->post('/images/upload', UploadImageController::class . '::handle');
 
 $app->run();
