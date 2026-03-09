@@ -1,12 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEditor, EditorContent } from '@tiptap/react';
 import Document from '@tiptap/extension-document';
 import Heading from '@tiptap/extension-heading';
 import Paragraph from '@tiptap/extension-paragraph';
 import Text from '@tiptap/extension-text';
+import Link from '@tiptap/extension-link';
 import type { PressRelease } from '@/lib/types';
 import styles from './page.module.css';
 
@@ -79,10 +80,37 @@ interface EditorProps {
   initialContent: string;
 }
 
+interface LinkDialogState {
+  isOpen: boolean;
+  url: string;
+  displayText: string;
+  isEdit: boolean;
+}
+
 function Editor({ initialTitle, initialContent }: EditorProps) {
   const [title, setTitle] = useState(initialTitle);
+  const [linkDialog, setLinkDialog] = useState<LinkDialogState>({
+    isOpen: false,
+    url: '',
+    displayText: '',
+    isEdit: false,
+  });
+
   const editor = useEditor({
-    extensions: [Document, Heading, Paragraph, Text],
+    extensions: [
+      Document,
+      Heading,
+      Paragraph,
+      Text,
+      Link.configure({
+        openOnClick: true,
+        HTMLAttributes: {
+          class: styles.editorLink,
+          rel: 'noopener noreferrer',
+          target: '_blank',
+        },
+      })
+    ],
     content: initialContent,
     immediatelyRender: false
   });
@@ -97,6 +125,59 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
       content: JSON.stringify(editor.getJSON()),
     });
   };
+
+  const openLinkDialog = useCallback(() => {
+    if (!editor) return;
+
+    const { from, to, empty } = editor.state.selection;
+    const existingLink = editor.getAttributes('link');
+    const selectedText = empty ? '' : editor.state.doc.textBetween(from, to, '');
+
+    setLinkDialog({
+      isOpen: true,
+      url: existingLink.href ?? '',
+      displayText: selectedText,
+      isEdit: !!existingLink.href,
+    });
+  }, [editor]);
+
+  const applyLink = useCallback(() => {
+    if (!editor) return;
+
+    const { url, displayText } = linkDialog;
+    const trimmedUrl = url.trim();
+
+    if (!trimmedUrl) {
+      editor.chain().focus().unsetLink().run();
+      setLinkDialog({ isOpen: false, url: '', displayText: '', isEdit: false });
+      return;
+    }
+
+    const { empty } = editor.state.selection;
+
+    if (empty && displayText.trim()) {
+      editor.chain().focus()
+        .insertContent(`<a href="${trimmedUrl}" target="_blank" rel="noopener noreferrer">${displayText}</a>`)
+        .run();
+    } else if (!empty) {
+      editor.chain().focus().setLink({ href: trimmedUrl }).run();
+    }
+
+    setLinkDialog({ isOpen: false, url: '', displayText: '', isEdit: false });
+  }, [editor, linkDialog]);
+
+  const removeLink = useCallback(() => {
+    if (!editor) return;
+    editor.chain().focus().unsetLink().run();
+    setLinkDialog({ isOpen: false, url: '', displayText: '', isEdit: false });
+  }, [editor]);
+
+  const cancelDialog = useCallback(() => {
+    setLinkDialog({ isOpen: false, url: '', displayText: '', isEdit: false });
+    editor?.commands.focus();
+  }, [editor]);
+
+  const isLinkActive = editor?.isActive('link') ?? false;
 
   return (
     <div className={styles.container}>
@@ -118,9 +199,144 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
               className={styles.titleInput}
             />
           </div>
+
+          <div className={styles.toolbar}>
+            <button
+              type="button"
+              onClick={openLinkDialog}
+              className={`${styles.toolbarButton} ${isLinkActive ? styles.toolbarButtonActive : ''}`}
+              title="リンクを挿入・編集"
+              aria-label="リンクを挿入"
+            >
+              <LinkIcon />
+              <span className={styles.toolbarButtonLabel}>リンク</span>
+            </button>
+
+            {isLinkActive && (
+              <button
+                type="button"
+                onClick={removeLink}
+                className={`${styles.toolbarButton} ${styles.toolbarButtonDanger}`}
+                title="リンクを削除"
+                aria-label="リンクを削除"
+              >
+                <UnlinkIcon />
+                <span className={styles.toolbarButtonLabel}>リンク解除</span>
+              </button>
+            )}
+          </div>
+
           <EditorContent editor={editor} />
         </div>
       </main>
+
+      {linkDialog.isOpen && (
+        <div className={styles.dialogOverlay} onClick={cancelDialog}>
+          <div
+            className={styles.dialog}
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label="リンクの挿入"
+          >
+            <div className={styles.dialogHeader}>
+              <h2 className={styles.dialogTitle}>
+                {linkDialog.isEdit ? 'リンクを編集' : 'リンクを挿入'}
+              </h2>
+              <button
+                type="button"
+                onClick={cancelDialog}
+                className={styles.dialogCloseButton}
+                aria-label="閉じる"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className={styles.dialogBody}>
+              {!linkDialog.isEdit && (
+                <div className={styles.formGroup}>
+                  <label htmlFor="link-display-text" className={styles.formLabel}>
+                    表示テキスト
+                  </label>
+                  <input
+                    id="link-display-text"
+                    type="text"
+                    value={linkDialog.displayText}
+                    onChange={(e) =>
+                      setLinkDialog((prev) => ({ ...prev, displayText: e.target.value }))
+                    }
+                    placeholder="リンクとして表示するテキスト"
+                    className={styles.formInput}
+                  />
+                </div>
+              )}
+
+              <div className={styles.formGroup}>
+                <label htmlFor="link-url" className={styles.formLabel}>
+                  URL <span className={styles.required}>*</span>
+                </label>
+                <input
+                  id="link-url"
+                  type="url"
+                  value={linkDialog.url}
+                  onChange={(e) =>
+                    setLinkDialog((prev) => ({ ...prev, url: e.target.value }))
+                  }
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') applyLink();
+                    if (e.key === 'Escape') cancelDialog();
+                  }}
+                  placeholder="https://example.com"
+                  className={styles.formInput}
+                  autoFocus
+                />
+              </div>
+            </div>
+
+            <div className={styles.dialogFooter}>
+              <button type="button" onClick={cancelDialog} className={styles.buttonSecondary}>
+                キャンセル
+              </button>
+              {linkDialog.isEdit && (
+                <button type="button" onClick={removeLink} className={styles.buttonDanger}>
+                  リンク削除
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={applyLink}
+                className={styles.buttonPrimary}
+                disabled={!linkDialog.url.trim()}
+              >
+                {linkDialog.isEdit ? '更新' : '挿入'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
+  );
+}
+
+function LinkIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+    </svg>
+  );
+}
+
+function UnlinkIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M18.84 12.25l1.72-1.71h-.02a5.004 5.004 0 0 0-.12-7.07 5.006 5.006 0 0 0-6.95 0l-1.72 1.71" />
+      <path d="M5.17 11.75l-1.71 1.71a5.004 5.004 0 0 0 .12 7.07 5.006 5.006 0 0 0 6.95 0l1.71-1.71" />
+      <line x1="8" y1="2" x2="8" y2="5" />
+      <line x1="2" y1="8" x2="5" y2="8" />
+      <line x1="16" y1="19" x2="16" y2="22" />
+      <line x1="19" y1="16" x2="22" y2="16" />
+    </svg>
   );
 }
