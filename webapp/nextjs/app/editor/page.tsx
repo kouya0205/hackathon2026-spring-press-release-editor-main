@@ -20,12 +20,13 @@ import styles from './page.module.css';
 
 const PRESS_RELEASE_ID = 1;
 const queryKey = ['press-release', PRESS_RELEASE_ID];
+const BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:8080';
 
 function usePressReleaseQuery() {
   return useQuery({
     queryKey,
     queryFn: async (): Promise<PressRelease> => {
-      const response = await fetch(`/api/press-releases/${PRESS_RELEASE_ID}`);
+      const response = await fetch(`${BASE_URL}/press-releases/${PRESS_RELEASE_ID}`);
       if (!response.ok) {
         throw new Error(`HTTPエラー: ${response.status}`);
       }
@@ -39,7 +40,7 @@ function useSavePressReleaseMutation() {
 
   return useMutation({
     mutationFn: async (data: { title: string; content: string }) => {
-      const response = await fetch(`/api/press-releases/${PRESS_RELEASE_ID}`, {
+      const response = await fetch(`${BASE_URL}/press-releases/${PRESS_RELEASE_ID}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
