@@ -37,7 +37,11 @@ class SavePressReleaseController
 
         $id = $validated['id'];
         $title = $validated['title'];
-        $content = $validated['content'];
+        try {
+            $content = ImageResizer::processContent($validated['content']);
+        } catch (\Throwable $e) {
+            $content = $validated['content'];
+        }
 
         try {
             // データベース接続を取得（必要なタイミングで実行）
