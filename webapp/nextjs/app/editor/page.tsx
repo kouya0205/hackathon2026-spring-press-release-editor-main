@@ -103,7 +103,7 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
   const MAX_CHAR_TITLE = 100;
   const MAX_CHAR_MAIN = 500;
   const [title, setTitle] = useState(initialTitle);
-  const [count, setCount] = useState(0);
+  const [charCount, setCharCount] = useState(0);
   const [linkDialog, setLinkDialog] = useState<LinkDialogState>({
     isOpen: false,
     url: '',
@@ -132,7 +132,6 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
       }),
       CharacterCount.configure({
         limit: MAX_CHAR_MAIN,
-        //textCounter: (text) => text.length
       }),
       Bold,
       Italic,
@@ -140,14 +139,15 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
       BulletList,
       OrderedList,
       ListItem,
-      CharacterCount
       Image,
     ],
     content: initialContent,
     immediatelyRender: false,
+    onCreate: ({ editor }) => {
+      setCharCount(editor.storage.characterCount.characters());
+    },
     onUpdate: ({ editor }) => {
-      const textWithNewlines = editor.getText({ blockSeparator: '\n' });
-      setCount(textWithNewlines.length); 
+      setCharCount(editor.storage.characterCount.characters());
     },
   });
 
@@ -272,7 +272,7 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
 
           <div className={styles.toolbar}>
             <div>
-                本文文字数: {editor?.storage.characterCount.characters()} / {MAX_CHAR_MAIN}
+                本文文字数: {charCount} / {MAX_CHAR_MAIN}
             </div>
             <div>
                 タイトル文字数: {title?.length} / {MAX_CHAR_TITLE}
