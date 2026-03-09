@@ -20,12 +20,36 @@ import styles from './page.module.css';
 
 const PRESS_RELEASE_ID = 1;
 const queryKey = ['press-release', PRESS_RELEASE_ID];
+const BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:8080';
+
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+
+/**
+ * 画像をサーバーにアップロードし、長辺600px以下にリサイズされた data URL を取得する
+ */
+async function uploadImage(file: File): Promise<string> {
+  const formData = new FormData();
+  formData.append('image', file);
+
+  const response = await fetch(`${BASE_URL}/images/upload`, {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error((data as { message?: string }).message ?? '画像のアップロードに失敗しました');
+  }
+
+  const data = (await response.json()) as { src: string };
+  return data.src;
+}
 
 function usePressReleaseQuery() {
   return useQuery({
     queryKey,
     queryFn: async (): Promise<PressRelease> => {
-      const response = await fetch(`/api/press-releases/${PRESS_RELEASE_ID}`);
+      const response = await fetch(`${BASE_URL}/press-releases/${PRESS_RELEASE_ID}`);
       if (!response.ok) {
         throw new Error(`HTTPエラー: ${response.status}`);
       }
@@ -39,7 +63,7 @@ function useSavePressReleaseMutation() {
 
   return useMutation({
     mutationFn: async (data: { title: string; content: string }) => {
-      const response = await fetch(`/api/press-releases/${PRESS_RELEASE_ID}`, {
+      const response = await fetch(`${BASE_URL}/press-releases/${PRESS_RELEASE_ID}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -145,50 +169,46 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
       FileHandler.configure({
         allowedMimeTypes: ['image/png', 'image/jpeg', 'image/gif', 'image/webp'],
         onDrop: (currentEditor, files, pos) => {
-          files.forEach(file => {
-            const fileReader = new FileReader()
+          const file = files[0];
+          if (!file) return;
 
-            fileReader.readAsDataURL(file)
-            fileReader.onload = () => {
+          uploadImage(file)
+            .then((src) => {
               currentEditor
                 .chain()
                 .insertContentAt(pos, {
                   type: 'image',
-                  attrs: {
-                    src: fileReader.result,
-                  },
+                  attrs: { src },
                 })
                 .focus()
-                .run()
-              requestSaveRef.current?.();
-            }
-          })
+                .run();
+              window.dispatchEvent(new CustomEvent('editor-request-save'));
+            })
+            .catch((err) => {
+              alert(err instanceof Error ? err.message : '画像のアップロードに失敗しました');
+            });
         },
         onPaste: (currentEditor, files, htmlContent) => {
-          files.forEach(file => {
-            if (htmlContent) {
-              // if there is htmlContent, stop manual insertion & let other extensions handle insertion via inputRule
-              // you could extract the pasted file from this url string and upload it to a server for example
-              return false
-            }
+          if (htmlContent) return false;
 
-            const fileReader = new FileReader()
+          const file = files[0];
+          if (!file) return;
 
-            fileReader.readAsDataURL(file)
-            fileReader.onload = () => {
+          uploadImage(file)
+            .then((src) => {
               currentEditor
                 .chain()
                 .insertContentAt(currentEditor.state.selection.anchor, {
                   type: 'image',
-                  attrs: {
-                    src: fileReader.result,
-                  },
+                  attrs: { src },
                 })
                 .focus()
-                .run()
-              requestSaveRef.current?.();
-            }
-          })
+                .run();
+              window.dispatchEvent(new CustomEvent('editor-request-save'));
+            })
+            .catch((err) => {
+              alert(err instanceof Error ? err.message : '画像のアップロードに失敗しました');
+            });
         },
       }),
       Image.configure({
@@ -206,7 +226,9 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
   });
 
   const { isPending, mutate } = useSavePressReleaseMutation();
-  const [lastSavedData, setLastSavedData] = useState({ title: initialTitle, content: initialContent });
+  const initialContentStr =
+    typeof initialContent === 'string' ? initialContent : JSON.stringify(initialContent);
+  const [, setLastSavedData] = useState({ title: initialTitle, content: initialContentStr });
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
 
   // 最新ステートをRefに保持
@@ -255,6 +277,13 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
     }, 5000);
 
     return () => clearInterval(intervalId);
+  }, []);
+
+  // 画像挿入時の自動保存用イベントリスナー（ref をレンダー外で参照するため）
+  useEffect(() => {
+    const handler = () => requestSaveRef.current?.();
+    window.addEventListener('editor-request-save', handler);
+    return () => window.removeEventListener('editor-request-save', handler);
   }, []);
 
   const handleSave = () => {
@@ -367,28 +396,27 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
   }, [editor]);
 
   const handleImageFileSelect = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
       const files = e.target.files;
       if (!files?.length || !editor) return;
 
       const file = files[0];
-      const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-      if (!allowedTypes.includes(file.type)) {
+      if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
         alert('対応形式: JPEG, PNG, GIF, WebP');
         e.target.value = '';
         return;
       }
 
-      const reader = new FileReader();
-      reader.onload = () => {
-        const result = reader.result as string;
+      try {
+        const src = await uploadImage(file);
         editor.chain().focus().setImage({
-          src: result,
+          src,
           alt: file.name,
         }).run();
         requestSaveRef.current?.();
-      };
-      reader.readAsDataURL(file);
+      } catch (err) {
+        alert(err instanceof Error ? err.message : '画像のアップロードに失敗しました');
+      }
       e.target.value = '';
     },
     [editor]
