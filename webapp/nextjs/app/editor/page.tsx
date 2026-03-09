@@ -15,6 +15,7 @@ import Underline from '@tiptap/extension-underline';
 import { BulletList, OrderedList, ListItem } from '@tiptap/extension-list';
 import Image from '@tiptap/extension-image';
 import FileHandler from '@tiptap/extension-file-handler';
+import { LinkCardExtension } from './components/LinkCardExtension';
 import type { PressRelease } from '@/lib/types';
 import styles from './page.module.css';
 
@@ -124,6 +125,13 @@ interface ImageDialogState {
   alt: string;
 }
 
+interface LinkCardDialogState {
+  isOpen: boolean;
+  url: string;
+  isLoading: boolean;
+  error: string;
+}
+
 function Editor({ initialTitle, initialContent }: EditorProps) {
   const MAX_CHAR_TITLE = 100;
   const MAX_CHAR_MAIN = 500;
@@ -141,12 +149,19 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
     url: '',
     alt: '',
   });
+  const [linkCardDialog, setLinkCardDialog] = useState<LinkCardDialogState>({
+    isOpen: false,
+    url: '',
+    isLoading: false,
+    error: '',
+  });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const requestSaveRef = useRef<() => void>(undefined);
 
   const editor = useEditor({
     extensions: [
       Document,
+      LinkCardExtension,
       Heading,
       Paragraph,
       Text,
@@ -395,6 +410,68 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
     editor?.commands.focus();
   }, [editor]);
 
+  const openLinkCardDialog = useCallback(() => {
+    setLinkCardDialog({ isOpen: true, url: '', isLoading: false, error: '' });
+  }, []);
+
+  const cancelLinkCardDialog = useCallback(() => {
+    setLinkCardDialog({ isOpen: false, url: '', isLoading: false, error: '' });
+    editor?.commands.focus();
+  }, [editor]);
+
+  const applyLinkCard = useCallback(async () => {
+    if (!editor) return;
+
+    const { url } = linkCardDialog;
+    const trimmedUrl = url.trim();
+
+    if (!trimmedUrl) return;
+
+    setLinkCardDialog((prev) => ({ ...prev, isLoading: true, error: '' }));
+
+    try {
+      const response = await fetch(`/api/ogp?url=${encodeURIComponent(trimmedUrl)}`);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        const message =
+          errorData && typeof errorData.error === 'string'
+            ? errorData.error
+            : 'OGP情報の取得に失敗しました';
+        throw new Error(message);
+      }
+
+      const data = await response.json();
+
+      const inserted = editor
+        .chain()
+        .focus()
+        .insertContent([
+          {
+            type: 'linkCard',
+            attrs: {
+              url: data.url,
+              title: data.title,
+              description: data.description,
+              image: data.image,
+            },
+          },
+          {
+            type: 'paragraph',
+          },
+        ])
+        .run();
+
+      if (!inserted) {
+        throw new Error('カードの挿入に失敗しました');
+      }
+
+      setLinkCardDialog({ isOpen: false, url: '', isLoading: false, error: '' });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'エラーが発生しました';
+      setLinkCardDialog((prev) => ({ ...prev, isLoading: false, error: message }));
+    }
+  }, [editor, linkCardDialog]);
+
   const handleImageFileSelect = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
       const files = e.target.files;
@@ -493,6 +570,17 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
                 <span className={styles.toolbarButtonLabel}>リンク解除</span>
               </button>
             )}
+            <button
+              type="button"
+              onClick={openLinkCardDialog}
+              className={styles.toolbarButton}
+              title="リンクカードを挿入"
+              aria-label="リンクカードを挿入"
+              disabled={!editor}
+            >
+              <LinkCardIcon />
+              <span className={styles.toolbarButtonLabel}>カード</span>
+            </button>
             <button
               type="button"
               onClick={triggerImageUpload}
@@ -740,6 +828,71 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
           </div>
         </div>
       )}
+
+      {linkCardDialog.isOpen && (
+        <div className={styles.dialogOverlay} onClick={cancelLinkCardDialog}>
+          <div
+            className={styles.dialog}
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label="リンクカードの挿入"
+          >
+            <div className={styles.dialogHeader}>
+              <h2 className={styles.dialogTitle}>リンクカードを挿入</h2>
+              <button
+                type="button"
+                onClick={cancelLinkCardDialog}
+                className={styles.dialogCloseButton}
+                aria-label="閉じる"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className={styles.dialogBody}>
+              <div className={styles.formGroup}>
+                <label htmlFor="link-card-url" className={styles.formLabel}>
+                  URL <span className={styles.required}>*</span>
+                </label>
+                <input
+                  id="link-card-url"
+                  type="url"
+                  value={linkCardDialog.url}
+                  onChange={(e) =>
+                    setLinkCardDialog((prev) => ({ ...prev, url: e.target.value, error: '' }))
+                  }
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') applyLinkCard();
+                    if (e.key === 'Escape') cancelLinkCardDialog();
+                  }}
+                  placeholder="https://example.com"
+                  className={styles.formInput}
+                  disabled={linkCardDialog.isLoading}
+                  autoFocus
+                />
+                {linkCardDialog.error && (
+                  <p className={styles.validationError}>{linkCardDialog.error}</p>
+                )}
+              </div>
+            </div>
+
+            <div className={styles.dialogFooter}>
+              <button type="button" onClick={cancelLinkCardDialog} className={styles.buttonSecondary} disabled={linkCardDialog.isLoading}>
+                キャンセル
+              </button>
+              <button
+                type="button"
+                onClick={applyLinkCard}
+                className={styles.buttonPrimary}
+                disabled={!linkCardDialog.url.trim() || linkCardDialog.isLoading}
+              >
+                {linkCardDialog.isLoading ? '取得中...' : '挿入'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -772,6 +925,17 @@ function UnlinkIcon() {
       <line x1="2" y1="8" x2="5" y2="8" />
       <line x1="16" y1="19" x2="16" y2="22" />
       <line x1="19" y1="16" x2="22" y2="16" />
+    </svg>
+  );
+}
+
+function LinkCardIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect width="18" height="14" x="3" y="5" rx="2" ry="2" />
+      <line x1="3" y1="10" x2="21" y2="10" />
+      <line x1="7" y1="15" x2="7.01" y2="15" />
+      <line x1="11" y1="15" x2="17" y2="15" />
     </svg>
   );
 }

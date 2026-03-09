@@ -4,6 +4,7 @@ webapp/nodejs/node_modules/
 webapp/go/vendor/
 webapp/python/venv/
 webapp/python/__pycache__/
+webapp/.next/
 
 # Environment variables
 .env
