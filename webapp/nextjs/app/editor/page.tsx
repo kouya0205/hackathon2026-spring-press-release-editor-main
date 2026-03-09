@@ -113,7 +113,7 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
           rel: 'noopener noreferrer',
           target: '_blank',
         },
-      })
+      }),
       Bold,
       Italic,
       Underline,
