@@ -104,6 +104,7 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
   const MAX_CHAR_MAIN = 500;
   const [title, setTitle] = useState(initialTitle);
   const [count, setCount] = useState(0);
+  const [titleError, setTitleError] = useState('');
   const [linkDialog, setLinkDialog] = useState<LinkDialogState>({
     isOpen: false,
     url: '',
@@ -130,17 +131,20 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
           target: '_blank',
         },
       }),
+      //3-2の要件を満たすため削除 鎌倉
+      /*
       CharacterCount.configure({
         limit: MAX_CHAR_MAIN,
         //textCounter: (text) => text.length
       }),
+      */
       Bold,
       Italic,
       Underline,
       BulletList,
       OrderedList,
       ListItem,
-      CharacterCount
+      CharacterCount,
       Image,
     ],
     content: initialContent,
@@ -155,6 +159,21 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
 
   const handleSave = () => {
     if (!editor) return;
+
+    //文字数制限のチェック
+    if(title.length > MAX_CHAR_TITLE) {
+      setTitleError(`タイトルは${MAX_CHAR_TITLE}文字以内にしてください`);
+      return;
+    } else {
+      setTitleError('');
+    }
+
+    if(count > MAX_CHAR_MAIN) {
+      setTitleError(`本文は${MAX_CHAR_MAIN}文字以内で入力してください`);
+      return;
+    } else {
+      setTitleError('');
+    }
 
     mutate({
       title,
@@ -261,15 +280,19 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
               value={title}
               onChange={(e) => {
                 const newValue = e.target.value
-                if (newValue.length <= MAX_CHAR_TITLE) { // ← 文字数制限
+                //if (newValue.length <= MAX_CHAR_TITLE) { // ← 文字数制限
                   setTitle(newValue)
-                }
+                //}
               }}
               placeholder="タイトルを入力してください"
               className={styles.titleInput}
             />
           </div>
-
+          {titleError && (
+            <div style={{ color: 'red', marginTop: 4 }}>
+              {titleError}
+            </div>
+          )}
           <div className={styles.toolbar}>
             <div>
                 本文文字数: {editor?.storage.characterCount.characters()} / {MAX_CHAR_MAIN}
