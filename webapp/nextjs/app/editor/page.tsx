@@ -187,6 +187,7 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
             }
           })
         },
+      }),
       Image.configure({
         allowBase64: true,
       }),
