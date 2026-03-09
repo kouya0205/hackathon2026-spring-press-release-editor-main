@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEditor, EditorContent } from '@tiptap/react';
 import Document from '@tiptap/extension-document';
@@ -115,6 +115,7 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
     url: '',
     alt: '',
   });
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const editor = useEditor({
     extensions: [
@@ -139,6 +140,10 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
       BulletList,
       OrderedList,
       ListItem,
+      Image.configure({
+        allowBase64: true,
+      }),
+      CharacterCount
       Image,
     ],
     content: initialContent,
@@ -213,11 +218,16 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
     editor?.commands.focus();
   }, [editor]);
 
-  const openImageDialog = useCallback(() => {
+  const triggerImageUpload = useCallback(() => {
+    if (!editor) return;
+    fileInputRef.current?.click();
+  }, [editor]);
+
+  const openImageUrlDialog = useCallback(() => {
     setImageDialog({ isOpen: true, url: '', alt: '' });
   }, []);
 
-  const applyImage = useCallback(() => {
+  const applyImageFromUrl = useCallback(() => {
     if (!editor) return;
 
     const { url, alt } = imageDialog;
@@ -241,6 +251,33 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
     setImageDialog({ isOpen: false, url: '', alt: '' });
     editor?.commands.focus();
   }, [editor]);
+
+  const handleImageFileSelect = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const files = e.target.files;
+      if (!files?.length || !editor) return;
+
+      const file = files[0];
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+      if (!allowedTypes.includes(file.type)) {
+        alert('対応形式: JPEG, PNG, GIF, WebP');
+        e.target.value = '';
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result as string;
+        editor.chain().focus().setImage({
+          src: result,
+          alt: file.name,
+        }).run();
+      };
+      reader.readAsDataURL(file);
+      e.target.value = '';
+    },
+    [editor]
+  );
 
   const isLinkActive = editor?.isActive('link') ?? false;
 
@@ -302,15 +339,34 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
             )}
             <button
               type="button"
-              onClick={openImageDialog}
+              onClick={triggerImageUpload}
               className={styles.toolbarButton}
-              title="画像をURLから挿入"
-              aria-label="画像を挿入"
+              title="画像をアップロード"
+              aria-label="画像をアップロード"
               disabled={!editor}
             >
               <ImageIcon />
               <span className={styles.toolbarButtonLabel}>画像</span>
             </button>
+            <button
+              type="button"
+              onClick={openImageUrlDialog}
+              className={styles.toolbarButton}
+              title="URLから画像を挿入"
+              aria-label="URLから画像を挿入"
+              disabled={!editor}
+            >
+              <ImageIcon />
+              <span className={styles.toolbarButtonLabel}>画像URL</span>
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/gif,image/webp"
+              onChange={handleImageFileSelect}
+              className={styles.hiddenFileInput}
+              aria-hidden="true"
+            />
           </div>
           <div className={styles.toolbar}>
             <button
@@ -370,10 +426,10 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
-            aria-label="画像の挿入"
+            aria-label="URLから画像を挿入"
           >
             <div className={styles.dialogHeader}>
-              <h2 className={styles.dialogTitle}>画像をURLから挿入</h2>
+              <h2 className={styles.dialogTitle}>URLから画像を挿入</h2>
               <button
                 type="button"
                 onClick={cancelImageDialog}
@@ -397,7 +453,7 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
                     setImageDialog((prev) => ({ ...prev, url: e.target.value }))
                   }
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') applyImage();
+                    if (e.key === 'Enter') applyImageFromUrl();
                     if (e.key === 'Escape') cancelImageDialog();
                   }}
                   placeholder="https://example.com/image.png"
@@ -417,7 +473,7 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
                     setImageDialog((prev) => ({ ...prev, alt: e.target.value }))
                   }
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') applyImage();
+                    if (e.key === 'Enter') applyImageFromUrl();
                     if (e.key === 'Escape') cancelImageDialog();
                   }}
                   placeholder="画像の説明（任意）"
@@ -432,7 +488,7 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
               </button>
               <button
                 type="button"
-                onClick={applyImage}
+                onClick={applyImageFromUrl}
                 className={styles.buttonPrimary}
                 disabled={!imageDialog.url.trim()}
               >
