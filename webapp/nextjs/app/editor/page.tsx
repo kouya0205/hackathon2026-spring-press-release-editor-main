@@ -13,6 +13,7 @@ import CharacterCount from '@tiptap/extension-character-count';
 import Italic from '@tiptap/extension-italic';
 import Underline from '@tiptap/extension-underline';
 import { BulletList, OrderedList, ListItem } from '@tiptap/extension-list';
+import Image from '@tiptap/extension-image';
 import type { PressRelease } from '@/lib/types';
 import styles from './page.module.css';
 
@@ -92,6 +93,12 @@ interface LinkDialogState {
   isEdit: boolean;
 }
 
+interface ImageDialogState {
+  isOpen: boolean;
+  url: string;
+  alt: string;
+}
+
 function Editor({ initialTitle, initialContent }: EditorProps) {
   const MAX_CHAR_TITLE = 100;
   const MAX_CHAR_MAIN = 500;
@@ -102,6 +109,11 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
     url: '',
     displayText: '',
     isEdit: false,
+  });
+  const [imageDialog, setImageDialog] = useState<ImageDialogState>({
+    isOpen: false,
+    url: '',
+    alt: '',
   });
 
   const editor = useEditor({
@@ -129,6 +141,7 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
       OrderedList,
       ListItem,
       CharacterCount
+      Image,
     ],
     content: initialContent,
     immediatelyRender: false,
@@ -200,6 +213,35 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
     editor?.commands.focus();
   }, [editor]);
 
+  const openImageDialog = useCallback(() => {
+    setImageDialog({ isOpen: true, url: '', alt: '' });
+  }, []);
+
+  const applyImage = useCallback(() => {
+    if (!editor) return;
+
+    const { url, alt } = imageDialog;
+    const trimmedUrl = url.trim();
+
+    if (!trimmedUrl) return;
+
+    editor
+      .chain()
+      .focus()
+      .setImage({
+        src: trimmedUrl,
+        alt: alt.trim() || undefined,
+      })
+      .run();
+
+    setImageDialog({ isOpen: false, url: '', alt: '' });
+  }, [editor, imageDialog]);
+
+  const cancelImageDialog = useCallback(() => {
+    setImageDialog({ isOpen: false, url: '', alt: '' });
+    editor?.commands.focus();
+  }, [editor]);
+
   const isLinkActive = editor?.isActive('link') ?? false;
 
   return (
@@ -258,9 +300,18 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
                 <span className={styles.toolbarButtonLabel}>リンク解除</span>
               </button>
             )}
+            <button
+              type="button"
+              onClick={openImageDialog}
+              className={styles.toolbarButton}
+              title="画像をURLから挿入"
+              aria-label="画像を挿入"
+              disabled={!editor}
+            >
+              <ImageIcon />
+              <span className={styles.toolbarButtonLabel}>画像</span>
+            </button>
           </div>
-
-          <EditorContent editor={editor} />
           <div className={styles.toolbar}>
             <button
               type="button"
@@ -308,9 +359,89 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
               番号付き
             </button>
           </div>
-          <EditorContent editor={editor} className={styles.tiptap}/>
+          <EditorContent editor={editor} className={styles.tiptap} />
         </div>
       </main>
+
+      {imageDialog.isOpen && (
+        <div className={styles.dialogOverlay} onClick={cancelImageDialog}>
+          <div
+            className={styles.dialog}
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label="画像の挿入"
+          >
+            <div className={styles.dialogHeader}>
+              <h2 className={styles.dialogTitle}>画像をURLから挿入</h2>
+              <button
+                type="button"
+                onClick={cancelImageDialog}
+                className={styles.dialogCloseButton}
+                aria-label="閉じる"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className={styles.dialogBody}>
+              <div className={styles.formGroup}>
+                <label htmlFor="image-url" className={styles.formLabel}>
+                  画像URL <span className={styles.required}>*</span>
+                </label>
+                <input
+                  id="image-url"
+                  type="url"
+                  value={imageDialog.url}
+                  onChange={(e) =>
+                    setImageDialog((prev) => ({ ...prev, url: e.target.value }))
+                  }
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') applyImage();
+                    if (e.key === 'Escape') cancelImageDialog();
+                  }}
+                  placeholder="https://example.com/image.png"
+                  className={styles.formInput}
+                  autoFocus
+                />
+              </div>
+              <div className={styles.formGroup}>
+                <label htmlFor="image-alt" className={styles.formLabel}>
+                  代替テキスト（alt）
+                </label>
+                <input
+                  id="image-alt"
+                  type="text"
+                  value={imageDialog.alt}
+                  onChange={(e) =>
+                    setImageDialog((prev) => ({ ...prev, alt: e.target.value }))
+                  }
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') applyImage();
+                    if (e.key === 'Escape') cancelImageDialog();
+                  }}
+                  placeholder="画像の説明（任意）"
+                  className={styles.formInput}
+                />
+              </div>
+            </div>
+
+            <div className={styles.dialogFooter}>
+              <button type="button" onClick={cancelImageDialog} className={styles.buttonSecondary}>
+                キャンセル
+              </button>
+              <button
+                type="button"
+                onClick={applyImage}
+                className={styles.buttonPrimary}
+                disabled={!imageDialog.url.trim()}
+              >
+                挿入
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {linkDialog.isOpen && (
         <div className={styles.dialogOverlay} onClick={cancelDialog}>
@@ -398,6 +529,16 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
         </div>
       )}
     </div>
+  );
+}
+
+function ImageIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
+      <circle cx="9" cy="9" r="2" />
+      <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
+    </svg>
   );
 }
 

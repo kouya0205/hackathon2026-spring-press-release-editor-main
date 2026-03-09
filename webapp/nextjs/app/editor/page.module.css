@@ -151,6 +151,14 @@
   margin-top: 0;
 }
 
+.tiptap img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+  display: block;
+  margin: 1em 0;
+}
+
 .loading,
 .error {
   display: flex;
