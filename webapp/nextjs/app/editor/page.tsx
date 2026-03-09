@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEditor, EditorContent } from '@tiptap/react';
 import Document from '@tiptap/extension-document';
@@ -105,6 +105,7 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
   const MAX_CHAR_MAIN = 500;
   const [title, setTitle] = useState(initialTitle);
   const [charCount, setCharCount] = useState(0);
+  const [validationError, setValidationError] = useState('');
   const [linkDialog, setLinkDialog] = useState<LinkDialogState>({
     isOpen: false,
     url: '',
@@ -116,6 +117,7 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
     url: '',
     alt: '',
   });
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const editor = useEditor({
     extensions: [
@@ -131,9 +133,7 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
           target: '_blank',
         },
       }),
-      CharacterCount.configure({
-        limit: MAX_CHAR_MAIN,
-      }),
+      CharacterCount,
       Bold,
       Italic,
       Underline,
@@ -187,6 +187,8 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
             }
           })
         },
+      Image.configure({
+        allowBase64: true,
       }),
     ],
     content: initialContent,
@@ -203,6 +205,17 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
 
   const handleSave = () => {
     if (!editor) return;
+
+    //文字数制限のチェック
+    if (title.length > MAX_CHAR_TITLE) {
+      setValidationError(`タイトルは${MAX_CHAR_TITLE}文字以内にしてください`);
+      return;
+    }
+    if (charCount > MAX_CHAR_MAIN) {
+      setValidationError(`本文は${MAX_CHAR_MAIN}文字以内で入力してください`);
+      return;
+    }
+    setValidationError('');
 
     mutate({
       title,
@@ -261,11 +274,16 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
     editor?.commands.focus();
   }, [editor]);
 
-  const openImageDialog = useCallback(() => {
+  const triggerImageUpload = useCallback(() => {
+    if (!editor) return;
+    fileInputRef.current?.click();
+  }, [editor]);
+
+  const openImageUrlDialog = useCallback(() => {
     setImageDialog({ isOpen: true, url: '', alt: '' });
   }, []);
 
-  const applyImage = useCallback(() => {
+  const applyImageFromUrl = useCallback(() => {
     if (!editor) return;
 
     const { url, alt } = imageDialog;
@@ -290,6 +308,33 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
     editor?.commands.focus();
   }, [editor]);
 
+  const handleImageFileSelect = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const files = e.target.files;
+      if (!files?.length || !editor) return;
+
+      const file = files[0];
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+      if (!allowedTypes.includes(file.type)) {
+        alert('対応形式: JPEG, PNG, GIF, WebP');
+        e.target.value = '';
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result as string;
+        editor.chain().focus().setImage({
+          src: result,
+          alt: file.name,
+        }).run();
+      };
+      reader.readAsDataURL(file);
+      e.target.value = '';
+    },
+    [editor]
+  );
+
   const isLinkActive = editor?.isActive('link') ?? false;
 
   return (
@@ -309,15 +354,19 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
               value={title}
               onChange={(e) => {
                 const newValue = e.target.value
-                if (newValue.length <= MAX_CHAR_TITLE) { // ← 文字数制限
+                //if (newValue.length <= MAX_CHAR_TITLE) { // ← 文字数制限
                   setTitle(newValue)
-                }
+                //}
               }}
               placeholder="タイトルを入力してください"
               className={styles.titleInput}
             />
           </div>
-
+          {validationError && (
+            <div style={{ color: 'red', marginTop: 4 }}>
+              {validationError}
+            </div>
+          )}
           <div className={styles.toolbar}>
             <div>
                 本文文字数: {charCount} / {MAX_CHAR_MAIN}
@@ -350,15 +399,34 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
             )}
             <button
               type="button"
-              onClick={openImageDialog}
+              onClick={triggerImageUpload}
               className={styles.toolbarButton}
-              title="画像をURLから挿入"
-              aria-label="画像を挿入"
+              title="画像をアップロード"
+              aria-label="画像をアップロード"
               disabled={!editor}
             >
               <ImageIcon />
               <span className={styles.toolbarButtonLabel}>画像</span>
             </button>
+            <button
+              type="button"
+              onClick={openImageUrlDialog}
+              className={styles.toolbarButton}
+              title="URLから画像を挿入"
+              aria-label="URLから画像を挿入"
+              disabled={!editor}
+            >
+              <ImageIcon />
+              <span className={styles.toolbarButtonLabel}>画像URL</span>
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/gif,image/webp"
+              onChange={handleImageFileSelect}
+              className={styles.hiddenFileInput}
+              aria-hidden="true"
+            />
           </div>
           <div className={styles.toolbar}>
             <button
@@ -418,10 +486,10 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
-            aria-label="画像の挿入"
+            aria-label="URLから画像を挿入"
           >
             <div className={styles.dialogHeader}>
-              <h2 className={styles.dialogTitle}>画像をURLから挿入</h2>
+              <h2 className={styles.dialogTitle}>URLから画像を挿入</h2>
               <button
                 type="button"
                 onClick={cancelImageDialog}
@@ -445,7 +513,7 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
                     setImageDialog((prev) => ({ ...prev, url: e.target.value }))
                   }
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') applyImage();
+                    if (e.key === 'Enter') applyImageFromUrl();
                     if (e.key === 'Escape') cancelImageDialog();
                   }}
                   placeholder="https://example.com/image.png"
@@ -465,7 +533,7 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
                     setImageDialog((prev) => ({ ...prev, alt: e.target.value }))
                   }
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') applyImage();
+                    if (e.key === 'Enter') applyImageFromUrl();
                     if (e.key === 'Escape') cancelImageDialog();
                   }}
                   placeholder="画像の説明（任意）"
@@ -480,7 +548,7 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
               </button>
               <button
                 type="button"
-                onClick={applyImage}
+                onClick={applyImageFromUrl}
                 className={styles.buttonPrimary}
                 disabled={!imageDialog.url.trim()}
               >
