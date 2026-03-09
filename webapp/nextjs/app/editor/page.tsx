@@ -6,7 +6,10 @@ import { useEditor, EditorContent } from '@tiptap/react';
 import Document from '@tiptap/extension-document';
 import Heading from '@tiptap/extension-heading';
 import Paragraph from '@tiptap/extension-paragraph';
+import Bold from '@tiptap/extension-bold';
 import Text from '@tiptap/extension-text';
+import Italic from '@tiptap/extension-italic';
+import Underline from '@tiptap/extension-underline';
 import { BulletList, OrderedList, ListItem } from '@tiptap/extension-list';
 import type { PressRelease } from '@/lib/types';
 import styles from './page.module.css';
@@ -83,7 +86,18 @@ interface EditorProps {
 function Editor({ initialTitle, initialContent }: EditorProps) {
   const [title, setTitle] = useState(initialTitle);
   const editor = useEditor({
-    extensions: [Document, Heading, Paragraph, Text, BulletList, OrderedList, ListItem],
+    extensions: [
+      Document,
+      Heading,
+      Paragraph,
+      Text,
+      Bold,
+      Italic,
+      Underline,
+      BulletList,
+      OrderedList,
+      ListItem,
+    ],
     content: initialContent,
     immediatelyRender: false
   });
@@ -120,6 +134,33 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
             />
           </div>
           <div className={styles.toolbar}>
+            <button
+              type="button"
+              onClick={() => editor?.chain().focus().toggleBold().run()}
+              className={`${styles.toolbarButton} ${editor?.isActive('bold') ? styles.toolbarButtonActive : ''}`}
+              title="太字 (Ctrl+B)"
+              disabled={!editor}
+            >
+              太字
+            </button>
+            <button
+              type="button"
+              onClick={() => editor?.chain().focus().toggleItalic().run()}
+              className={`${styles.toolbarButton} ${editor?.isActive('italic') ? styles.toolbarButtonActive : ''}`}
+              title="斜体 (Ctrl+I)"
+              disabled={!editor}
+            >
+              斜体
+            </button>
+            <button
+              type="button"
+              onClick={() => editor?.chain().focus().toggleUnderline().run()}
+              className={`${styles.toolbarButton} ${editor?.isActive('underline') ? styles.toolbarButtonActive : ''}`}
+              title="下線"
+              disabled={!editor}
+            >
+              下線
+            </button>
             <button
               type="button"
               onClick={() => editor?.chain().focus().toggleBulletList().run()}
