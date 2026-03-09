@@ -139,7 +139,7 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
               番号付き
             </button>
           </div>
-          <EditorContent editor={editor} />
+          <EditorContent editor={editor} className={styles.tiptap}/>
         </div>
       </main>
     </div>
