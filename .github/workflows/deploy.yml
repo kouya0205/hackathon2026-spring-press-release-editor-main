@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - main
+  pull_request:
+    branches:
+      - main
   workflow_dispatch: 
 
 jobs:
@@ -52,7 +55,18 @@ jobs:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script_stop: true
           script: |
+            set -e
+            [ -f ~/.profile ] && . ~/.profile
+            [ -f ~/.bashrc ] && . ~/.bashrc
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+            command -v nvm >/dev/null 2>&1 && nvm use --lts >/dev/null 2>&1 || true
+            if ! command -v npm >/dev/null 2>&1; then
+              echo "npm not found on remote host (non-interactive shell). Install Node.js or configure PATH/NVM for SSH sessions." >&2
+              exit 1
+            fi
             cd ~/hackathon2026-spring-press-release-editor-main/webapp/nextjs
             git pull origin main
             NODE_OPTIONS="--max-old-space-size=1024" npm install
