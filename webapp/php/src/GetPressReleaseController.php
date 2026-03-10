@@ -69,15 +69,27 @@ class GetPressReleaseController
             $response->getBody()->write($payload);
             return $response->withHeader('Content-Type', 'application/json');
 
-        } catch (PDOException) {
-            // データベースエラーが発生した場合は500エラーを返す
-            $payload = json_encode(['code' => 'INTERNAL_ERROR', 'message' => 'Internal server error']);
+                } catch (PDOException $e) {
+            error_log((string)$e);
+            $payload = json_encode([
+                'code' => 'INTERNAL_ERROR',
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
             $response->getBody()->write($payload);
             return $response
                 ->withHeader('Content-Type', 'application/json')
                 ->withStatus(500);
-        } catch (DateMalformedStringException) {
-            $payload = json_encode(['code' => 'INTERNAL_ERROR', 'message' => 'Internal server error']);
+
+        } catch (DateMalformedStringException $e) {
+            error_log((string)$e);
+            $payload = json_encode([
+                'code' => 'INTERNAL_ERROR',
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
             $response->getBody()->write($payload);
             return $response
                 ->withHeader('Content-Type', 'application/json')
@@ -90,8 +102,7 @@ class GetPressReleaseController
      */
     private static function formatTimestamp(string $timestamp): string
     {
-        return new DateTimeImmutable($timestamp)
-            ->format('Y-m-d\TH:i:s.u');
+        $dt = new DateTimeImmutable($timestamp);
+        return $dt->format('Y-m-d\TH:i:s.u');
     }
-
 }

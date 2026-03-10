@@ -162,16 +162,40 @@ class SavePressReleaseController
 
         $title = $data['title'];
         $content = $data['content'];
-        // titleとcontentの長さを検証
+
+        // title の長さを検証
         if (mb_strlen($title) > $MAX_TITLE_LENGTH) {
-            $payload = json_encode(['code' => 'TITLE_TOO_LONG', 'message' => "Title must be at most {$MAX_TITLE_LENGTH} characters"]);
+            $payload = json_encode([
+                'code' => 'TITLE_TOO_LONG',
+                'message' => "Title must be at most {$MAX_TITLE_LENGTH} characters"
+            ]);
             $response->getBody()->write($payload);
             return $response
                 ->withHeader('Content-Type', 'application/json')
                 ->withStatus(400);
         }
-        if (mb_strlen($content) > $MAX_CONTENT_LENGTH) {
-            $payload = json_encode(['code' => 'CONTENT_TOO_LONG', 'message' => "Content must be at most {$MAX_CONTENT_LENGTH} characters"]);
+
+        // content は TipTap JSON 文字列として受け取り、実際の本文文字数を検証
+        $decodedContent = json_decode($content, true);
+
+        if (json_last_error() !== JSON_ERROR_NONE || !is_array($decodedContent)) {
+            $payload = json_encode([
+                'code' => 'INVALID_CONTENT',
+                'message' => 'Content must be valid TipTap JSON'
+            ]);
+            $response->getBody()->write($payload);
+            return $response
+                ->withHeader('Content-Type', 'application/json')
+                ->withStatus(400);
+        }
+
+        $plainTextLength = self::countTextLength($decodedContent);
+
+        if ($plainTextLength > $MAX_CONTENT_LENGTH) {
+            $payload = json_encode([
+                'code' => 'CONTENT_TOO_LONG',
+                'message' => "Content must be at most {$MAX_CONTENT_LENGTH} characters"
+            ]);
             $response->getBody()->write($payload);
             return $response
                 ->withHeader('Content-Type', 'application/json')
@@ -183,13 +207,38 @@ class SavePressReleaseController
             'content' => $content,
         ];
     }
+    /**
+     * TipTap JSON ノードから text ノードの文字数を再帰的に合計する
+     *
+     * @param mixed $node
+     * @return int
+     */
+    private static function countTextLength(mixed $node): int
+    {
+        if (!is_array($node)) {
+            return 0;
+        }
 
+        $length = 0;
+
+        if (($node['type'] ?? null) === 'text' && isset($node['text']) && is_string($node['text'])) {
+            $length += mb_strlen($node['text']);
+        }
+
+        if (isset($node['content']) && is_array($node['content'])) {
+            foreach ($node['content'] as $child) {
+                $length += self::countTextLength($child);
+            }
+        }
+
+        return $length;
+    }
     /**
      * @throws DateMalformedStringException
      */
     private static function formatTimestamp(string $timestamp): string
     {
-        return new DateTimeImmutable($timestamp)
-            ->format('Y-m-d\TH:i:s.u');
+        $dt = new DateTimeImmutable($timestamp);
+        return $dt->format('Y-m-d\TH:i:s.u');
     }
 }
