@@ -14,12 +14,12 @@ export interface ErrorResponse {
 export interface TipTapContent {
   type: string;
   content?: TipTapNode[];
-  attrs?: Record<string, any>;
+  attrs?: Record<string, unknown>;
 }
 
 export interface TipTapNode {
   type: string;
   content?: TipTapNode[];
   text?: string;
-  attrs?: Record<string, any>;
+  attrs?: Record<string, unknown>;
 }
