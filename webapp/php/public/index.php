@@ -1,5 +1,4 @@
 <?php
-
 // CORS（クロスオリジン）対応 - OPTIONS preflight を先に処理
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
@@ -20,6 +19,10 @@ use App\UploadImageController;
 use Slim\Factory\AppFactory;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
+
+
+$dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/../');
+$dotenv->load();
 
 $app = AppFactory::create();
 
