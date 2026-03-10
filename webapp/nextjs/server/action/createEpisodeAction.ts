@@ -1,5 +1,7 @@
 'use server';
 
+import { getServerBackendBaseUrl } from '@/lib/backendUrl';
+
 /**
  * プレスリリース構成用のエピソード（企業回答）フォームデータをPHPバックエンドに送信するサーバーアクション
  * FormData をそのまま PHP の POST /episode/form エンドポイントに転送する
@@ -15,7 +17,7 @@ export type EpisodeFormState = {
   suggestedContent?: string;
 };
 
-const BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:8080';
+const BASE_URL = getServerBackendBaseUrl();
 
 export async function createEpisodeAction(
   _prevState: EpisodeFormState,
@@ -43,7 +45,7 @@ export async function createEpisodeAction(
     }
 
     // AI レスポンスから title / content を取り出す
-    const suggestedTitle = data.title ?? undefined;
+    const suggestedTitle = typeof data.title === 'string' ? data.title : undefined;
     const suggestedContent =
       typeof data.content === 'string'
         ? data.content
