@@ -22,12 +22,14 @@ export async function createEpisodeAction(
       body: formData,
     });
 
+    const data = (await response.json().catch(() => ({}))) as {
+      code?: string;
+      message?: string;
+      errors?: Record<string, string>;
+      [key: string]: unknown;
+    };
+
     if (!response.ok) {
-      const data = (await response.json().catch(() => ({}))) as {
-        code?: string;
-        message?: string;
-        errors?: Record<string, string>;
-      };
       return {
         success: false,
         message: data.message ?? `送信に失敗しました (HTTP ${response.status})`,
