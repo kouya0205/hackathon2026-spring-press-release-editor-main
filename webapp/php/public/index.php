@@ -36,4 +36,7 @@ $app->get('/press-releases/{id}', GetPressReleaseController::class . '::handle')
 $app->post('/press-releases/{id}', SavePressReleaseController::class . '::handle');
 $app->post('/images/upload', UploadImageController::class . '::handle');
 
+//episode form
+$app->post('/episode/form', [GetEpisodeFormController::class, '::handle']);
+
 $app->run();
