@@ -21,13 +21,35 @@ import {
 const initialState: EpisodeFormState = {
   success: false,
   message: '',
+  suggestedTitle: '',
+  suggestedContent: '',
 };
 
-export default function EpisodeForm() {
+export type EpisodeFormProps = {
+  /** AI 提案を Editor に反映するコールバック（title, TipTap content） */
+  onApplySuggestion?: (title: string, content: string) => void;
+};
+
+export default function EpisodeForm({ onApplySuggestion }: EpisodeFormProps) {
   const [state, formAction, isPending] = useActionState(
     createEpisodeAction,
     initialState
   );
+
+  const hasSuggestion =
+    state.success &&
+    (state.suggestedTitle != null || state.suggestedContent != null);
+  const canApply =
+    hasSuggestion &&
+    state.suggestedContent != null &&
+    onApplySuggestion != null;
+
+  const handleApplySuggestion = () => {
+    if (!canApply || !onApplySuggestion) return;
+    const title = state.suggestedTitle ?? '';
+    const content = state.suggestedContent ?? '';
+    onApplySuggestion(title, content);
+  };
 
   return (
     <Card className="w-full max-w-md shrink-0">
@@ -236,10 +258,19 @@ export default function EpisodeForm() {
             </div>
           </div>
         </CardContent>
-        <CardFooter>
+        <CardFooter className="flex flex-col gap-2 sm:flex-row">
           <Button type="submit" disabled={isPending}>
             {isPending ? '送信中...' : '送信する'}
           </Button>
+          {canApply && (
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={handleApplySuggestion}
+            >
+              Editorに反映
+            </Button>
+          )}
         </CardFooter>
       </form>
     </Card>
