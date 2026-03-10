@@ -17,17 +17,9 @@ export async function createEpisodeAction(
   formData: FormData
 ): Promise<EpisodeFormState> {
   try {
-    const params = new URLSearchParams();
-    formData.forEach((value, key) => {
-      params.append(key, value instanceof File ? value.name : String(value));
-    });
-
     const response = await fetch(`${BASE_URL}/episode/form`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: params,
+      body: formData,
     });
 
     if (!response.ok) {

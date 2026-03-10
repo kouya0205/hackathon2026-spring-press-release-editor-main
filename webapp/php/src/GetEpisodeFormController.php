@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Controller;
+namespace App;
 
-use Psr\Http\Message\ResponseInterface as Response;
-use Psr\Http\Message\ServerRequestInterface as Request;
+use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\ServerRequestInterface;
 
 class GetEpisodeFormController
 {
@@ -28,8 +28,15 @@ class GetEpisodeFormController
         $title = $data['title'] ?? null;
 
         $result = [
-            'episode_id' => $episodeId,
-            'title' => $title
+            'company_name' => $data['company_name'] ?? null,
+            'contact_name' => $data['contact_name'] ?? null,
+            'email' => $data['email'] ?? null,
+            'episode' => $data['episode'] ?? null,
+            'background' => $data['background'] ?? null,
+            'message_1' => $data['message_1'] ?? null,
+            'message_2' => $data['message_2'] ?? null,
+            'message_3' => $data['message_3'] ?? null,
+            'notes' => $data['notes'] ?? null,
         ];
 
         //OpenAI APIを呼び出して、エピソードフォームの内容を生成する処理をここに追加
