@@ -13,6 +13,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
+use App\GetEpisodeFormController;
 use App\GetPressReleaseController;
 use App\SavePressReleaseController;
 use App\UploadImageController;
@@ -36,7 +37,6 @@ $app->get('/press-releases/{id}', GetPressReleaseController::class . '::handle')
 $app->post('/press-releases/{id}', SavePressReleaseController::class . '::handle');
 $app->post('/images/upload', UploadImageController::class . '::handle');
 
-//episode form
-$app->post('/episode/form', [GetEpisodeFormController::class, '::handle']);
+$app->post('/episode/form', GetEpisodeFormController::class . '::handle');
 
 $app->run();
