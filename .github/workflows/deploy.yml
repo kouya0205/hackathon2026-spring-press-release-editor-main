@@ -67,9 +67,37 @@ jobs:
               echo "npm not found on remote host (non-interactive shell). Install Node.js or configure PATH/NVM for SSH sessions." >&2
               exit 1
             fi
-            cd ~/hackathon2026-spring-press-release-editor-main/webapp/nextjs
+            REPO_DIR=~/hackathon2026-spring-press-release-editor-main
+            cd "$REPO_DIR"
+            PREV_REV=$(git rev-parse HEAD)
+            
             git pull origin main
+
+            NEW_REV=$(git rev-parse HEAD)
+            CHANGED_FILES=$(git diff --name-only "$PREV_REV" "$NEW_REV" || true)
+
+            PHP_CHANGED=false
+            PHP_DEPS_CHANGED=false
+            echo "$CHANGED_FILES" | grep -Eq '^webapp/php/' && PHP_CHANGED=true || true
+            echo "$CHANGED_FILES" | grep -Eq '^webapp/php/composer\.(json|lock)$' && PHP_DEPS_CHANGED=true || true
+
+            cd "$REPO_DIR/webapp/nextjs"
             NODE_OPTIONS="--max-old-space-size=1024" npm install
             rm -rf .next
             NODE_OPTIONS="--max-old-space-size=3072" npm run build
             sudo systemctl restart press-release-nextjs.service
+
+            if [ "$PHP_CHANGED" = true ]; then
+              echo "PHP changes detected. Running safe PHP deploy steps."
+
+              if [ "$PHP_DEPS_CHANGED" = true ]; then
+                if ! command -v composer >/dev/null 2>&1; then
+                  echo "composer not found on remote host, but composer files changed." >&2
+                  exit 1
+                fi
+                cd "$REPO_DIR/webapp/php"
+                composer install --no-dev --prefer-dist --optimize-autoloader --no-interaction
+              fi
+
+              sudo systemctl reload apache2 || sudo systemctl restart apache2
+            fi
