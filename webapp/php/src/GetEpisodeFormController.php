@@ -28,6 +28,7 @@ class GetEpisodeFormController
         $title = $data['title'] ?? null;
 
         $result = [
+            'announcement_type' => $data['announcement_type'] ?? null,
             'company_name' => $data['company_name'] ?? null,
             'contact_name' => $data['contact_name'] ?? null,
             'email' => $data['email'] ?? null,
