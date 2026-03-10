@@ -13,12 +13,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
+use App\GetEpisodeFormController;
 use App\GetPressReleaseController;
 use App\SavePressReleaseController;
 use App\UploadImageController;
+use App\EnvLoader;
 use Slim\Factory\AppFactory;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
+
+EnvLoader::load(__DIR__ . '/..');
 
 $app = AppFactory::create();
 
@@ -35,5 +39,6 @@ $app->add(function (ServerRequestInterface $request, $handler): ResponseInterfac
 $app->get('/press-releases/{id}', GetPressReleaseController::class . '::handle');
 $app->post('/press-releases/{id}', SavePressReleaseController::class . '::handle');
 $app->post('/images/upload', UploadImageController::class . '::handle');
+$app->post('/episode/form', GetEpisodeFormController::class . '::handle');
 
 $app->run();

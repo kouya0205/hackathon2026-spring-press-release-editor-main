@@ -16,13 +16,12 @@ use App\GetEpisodeFormController;
 use App\GetPressReleaseController;
 use App\SavePressReleaseController;
 use App\UploadImageController;
+use App\EnvLoader;
 use Slim\Factory\AppFactory;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 
-
-$dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/..');
-$dotenv->load();
+EnvLoader::load(__DIR__ . '/..');
 
 $app = AppFactory::create();
 

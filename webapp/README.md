@@ -15,6 +15,14 @@
 
 ### 1. Docker環境の起動
 
+起動前に、`webapp/php/.env` を作成してください（OpenAI連携に必要）。
+
+```bash
+cat <<'EOF' > php/.env
+OPENAI_API_KEY=your_openai_api_key
+EOF
+```
+
 ```bash
 cd webapp
 docker compose up -d

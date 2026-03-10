@@ -16,6 +16,29 @@
 npm install
 ```
 
+## 環境変数セットアップ
+
+`webapp/nextjs` 配下に `.env` を作成して、以下を設定してください。
+
+```bash
+cat <<'EOF' > .env
+NEXT_PUBLIC_BACKEND_URL=/api-backend
+BACKEND_URL=http://127.0.0.1:8080
+INTERNAL_BACKEND_URL=http://127.0.0.1:8080
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=press_release_db
+DB_USER=press_release
+DB_PASSWORD=press_release
+EOF
+```
+
+補足:
+- `NEXT_PUBLIC_BACKEND_URL`: ブラウザから参照するバックエンドURL。開発時は `/api-backend` を推奨。
+- `BACKEND_URL` / `INTERNAL_BACKEND_URL`: Server Action が参照するバックエンドURL。
+- `DB_*`: Next.js 側でDBへ直接接続する処理の接続情報。
+- 機密情報を含む `.env` はGitにコミットしないでください。
+
 ## データベース起動
 
 `webapp` ディレクトリで以下を実行:

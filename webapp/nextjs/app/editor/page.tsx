@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEditor, EditorContent } from '@tiptap/react';
 import Document from '@tiptap/extension-document';
@@ -17,6 +17,7 @@ import Image from '@tiptap/extension-image';
 import FileHandler from '@tiptap/extension-file-handler';
 import type { PressRelease } from '@/lib/types';
 import { getTemplateDefinition, type TemplateId } from '@/lib/templateLibrary';
+import { getBrowserBackendBaseUrl } from '@/lib/backendUrl';
 import styles from './page.module.css';
 import EpisodeForm from '@/components/Form/episodeForm';
 
@@ -24,11 +25,83 @@ const PRESS_RELEASE_ID = 1;
 
 const EMPTY_DOC = { type: 'doc', content: [{ type: 'paragraph', content: [] }] };
 const queryKey = ['press-release', PRESS_RELEASE_ID];
-const BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:8080';
+const BASE_URL = getBrowserBackendBaseUrl();
 
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 
 const TEMPLATE_IDS: TemplateId[] = ['T1', 'T2', 'T3', 'T4', 'T5', 'T6'];
+
+function createEditorExtensions() {
+  return [
+    Document,
+    Heading,
+    Paragraph,
+    Text,
+    Link.configure({
+      openOnClick: true,
+      HTMLAttributes: {
+        class: styles.editorLink,
+        rel: 'noopener noreferrer',
+        target: '_blank',
+      },
+    }),
+    CharacterCount,
+    Bold,
+    Italic,
+    Underline,
+    BulletList,
+    OrderedList,
+    ListItem,
+    FileHandler.configure({
+      allowedMimeTypes: ['image/png', 'image/jpeg', 'image/gif', 'image/webp'],
+      onDrop: (currentEditor, files, pos) => {
+        const file = files[0];
+        if (!file) return;
+
+        uploadImage(file)
+          .then((src) => {
+            currentEditor
+              .chain()
+              .insertContentAt(pos, {
+                type: 'image',
+                attrs: { src },
+              })
+              .focus()
+              .run();
+            window.dispatchEvent(new CustomEvent('editor-request-save'));
+          })
+          .catch((err) => {
+            alert(err instanceof Error ? err.message : '画像のアップロードに失敗しました');
+          });
+      },
+      onPaste: (currentEditor, files, htmlContent) => {
+        if (htmlContent) return false;
+
+        const file = files[0];
+        if (!file) return;
+
+        uploadImage(file)
+          .then((src) => {
+            currentEditor
+              .chain()
+              .insertContentAt(currentEditor.state.selection.anchor, {
+                type: 'image',
+                attrs: { src },
+              })
+              .focus()
+              .run();
+            window.dispatchEvent(new CustomEvent('editor-request-save'));
+          })
+          .catch((err) => {
+            alert(err instanceof Error ? err.message : '画像のアップロードに失敗しました');
+          });
+      },
+    }),
+    Image.configure({
+      allowBase64: true,
+    }),
+  ];
+}
 
 function isTemplateId(value: string): value is TemplateId {
   return TEMPLATE_IDS.includes(value as TemplateId);
@@ -204,78 +277,11 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
   const latestSuggestionRef = useRef<{ title: string; content: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const requestSaveRef = useRef<() => void>(undefined);
+  const editorExtensions = useMemo(() => createEditorExtensions(), []);
+  const aiEditorExtensions = useMemo(() => createEditorExtensions(), []);
 
   const editor = useEditor({
-    extensions: [
-      Document,
-      Heading,
-      Paragraph,
-      Text,
-      Link.configure({
-        openOnClick: true,
-        HTMLAttributes: {
-          class: styles.editorLink,
-          rel: 'noopener noreferrer',
-          target: '_blank',
-        },
-      }),
-      CharacterCount,
-      Bold,
-      Italic,
-      Underline,
-      BulletList,
-      OrderedList,
-      ListItem,
-      Image,
-      FileHandler.configure({
-        allowedMimeTypes: ['image/png', 'image/jpeg', 'image/gif'],
-        onDrop: (currentEditor, files, pos) => {
-          const file = files[0];
-          if (!file) return;
-
-          uploadImage(file)
-            .then((src) => {
-              currentEditor
-                .chain()
-                .insertContentAt(pos, {
-                  type: 'image',
-                  attrs: { src },
-                })
-                .focus()
-                .run();
-              window.dispatchEvent(new CustomEvent('editor-request-save'));
-            })
-            .catch((err) => {
-              alert(err instanceof Error ? err.message : '画像のアップロードに失敗しました');
-            });
-        },
-        onPaste: (currentEditor, files, htmlContent) => {
-          if (htmlContent) return false;
-
-          const file = files[0];
-          if (!file) return;
-
-          uploadImage(file)
-            .then((src) => {
-              currentEditor
-                .chain()
-                .insertContentAt(currentEditor.state.selection.anchor, {
-                  type: 'image',
-                  attrs: { src },
-                })
-                .focus()
-                .run();
-              window.dispatchEvent(new CustomEvent('editor-request-save'));
-            })
-            .catch((err) => {
-              alert(err instanceof Error ? err.message : '画像のアップロードに失敗しました');
-            });
-        },
-      }),
-      Image.configure({
-        allowBase64: true,
-      }),
-    ],
+    extensions: editorExtensions,
     content: initialContent,
     immediatelyRender: false,
     onCreate: ({ editor }) => {
@@ -288,76 +294,7 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
 
   // 第2エディタ: AI レスポンス専用（初期は空）
   const aiEditor = useEditor({
-    extensions: [
-      Document,
-      Heading,
-      Paragraph,
-      Text,
-      Link.configure({
-        openOnClick: true,
-        HTMLAttributes: {
-          class: styles.editorLink,
-          rel: 'noopener noreferrer',
-          target: '_blank',
-        },
-      }),
-      CharacterCount,
-      Bold,
-      Italic,
-      Underline,
-      BulletList,
-      OrderedList,
-      ListItem,
-      Image,
-      FileHandler.configure({
-        allowedMimeTypes: ['image/png', 'image/jpeg', 'image/gif'],
-        onDrop: (currentEditor, files, pos) => {
-          const file = files[0];
-          if (!file) return;
-
-          uploadImage(file)
-            .then((src) => {
-              currentEditor
-                .chain()
-                .insertContentAt(pos, {
-                  type: 'image',
-                  attrs: { src },
-                })
-                .focus()
-                .run();
-              window.dispatchEvent(new CustomEvent('editor-request-save'));
-            })
-            .catch((err) => {
-              alert(err instanceof Error ? err.message : '画像のアップロードに失敗しました');
-            });
-        },
-        onPaste: (currentEditor, files, htmlContent) => {
-          if (htmlContent) return false;
-
-          const file = files[0];
-          if (!file) return;
-
-          uploadImage(file)
-            .then((src) => {
-              currentEditor
-                .chain()
-                .insertContentAt(currentEditor.state.selection.anchor, {
-                  type: 'image',
-                  attrs: { src },
-                })
-                .focus()
-                .run();
-              window.dispatchEvent(new CustomEvent('editor-request-save'));
-            })
-            .catch((err) => {
-              alert(err instanceof Error ? err.message : '画像のアップロードに失敗しました');
-            });
-        },
-      }),
-      Image.configure({
-        allowBase64: true,
-      }),
-    ],
+    extensions: aiEditorExtensions,
     content: EMPTY_DOC,
     immediatelyRender: false,
   });
@@ -398,7 +335,7 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
     if (!state.editor || state.isPending) return;
 
     const currentContent = JSON.stringify(state.editor.getJSON());
-    
+
     // 文字数制限オーバー時は自動保存しない
     if (state.title.length > MAX_CHAR_TITLE || state.charCount > MAX_CHAR_MAIN) {
       return;
@@ -690,7 +627,8 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
       reader.onload = (e: ProgressEvent<FileReader>) => {
         const htmlContent = e.target?.result;
         if (typeof htmlContent === 'string') {
-          editor?.commands.setContent(htmlContent, { emitUpdate: false });
+          editor?.commands.setContent(htmlContent);
+          requestSaveRef.current?.();
         }
       };
       reader.readAsText(file);

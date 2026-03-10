@@ -14,7 +14,7 @@ use Psr\Http\Message\UploadedFileInterface;
  *
  * 制限事項:
  * - サイズ: 5MB以下
- * - 対応形式: .jpg, .png, .gif（MIME: image/jpeg, image/png, image/gif）
+ * - 対応形式: .jpg, .png, .gif, .webp（MIME: image/jpeg, image/png, image/gif, image/webp）
  */
 class UploadImageController
 {
@@ -22,6 +22,7 @@ class UploadImageController
         'image/png',
         'image/jpeg',
         'image/gif',
+        'image/webp',
     ];
 
     private const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -67,7 +68,7 @@ class UploadImageController
 
             $clientMediaType = $file->getClientMediaType();
             if ($clientMediaType === null || !in_array(strtolower($clientMediaType), self::ALLOWED_MIME_TYPES, true)) {
-                return self::jsonError($response, 'INVALID_TYPE', '対応形式: .jpg, .png, .gif（5MB以下）', 400);
+                return self::jsonError($response, 'INVALID_TYPE', '対応形式: .jpg, .png, .gif, .webp（5MB以下）', 400);
             }
 
             $dataUrl = 'data:' . $clientMediaType . ';base64,' . base64_encode($contents);

@@ -2,8 +2,7 @@
 
 require __DIR__ . '/../vendor/autoload.php';
 
-$dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/..');
-$dotenv->load();
+App\EnvLoader::load(__DIR__ . '/..');
 
 $apiKey = $_ENV['OPENAI_API_KEY'];
 
