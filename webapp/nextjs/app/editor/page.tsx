@@ -16,6 +16,7 @@ import { BulletList, OrderedList, ListItem } from '@tiptap/extension-list';
 import Image from '@tiptap/extension-image';
 import FileHandler from '@tiptap/extension-file-handler';
 import type { PressRelease } from '@/lib/types';
+import { getTemplateDefinition, type TemplateId } from '@/lib/templateLibrary';
 import styles from './page.module.css';
 import { Button } from '@/components/ui/button';
 import EpisodeForm from '@/components/Form/episodeForm';
@@ -25,6 +26,55 @@ const queryKey = ['press-release', PRESS_RELEASE_ID];
 const BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:8080';
 
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+
+const TEMPLATE_IDS: TemplateId[] = ['T1', 'T2', 'T3', 'T4', 'T5', 'T6'];
+
+function isTemplateId(value: string): value is TemplateId {
+  return TEMPLATE_IDS.includes(value as TemplateId);
+}
+
+function buildTemplateContent(templateId: TemplateId) {
+  const template = getTemplateDefinition(templateId);
+  const content: Array<Record<string, unknown>> = [
+    {
+      type: 'paragraph',
+      content: [{ type: 'text', text: `${template.id}: ${template.name}` }],
+    },
+  ];
+
+  template.section_outline.forEach((section) => {
+    content.push({
+      type: 'heading',
+      attrs: { level: 2 },
+      content: [{ type: 'text', text: section.heading }],
+    });
+
+    content.push({
+      type: 'paragraph',
+      content: [{ type: 'text', text: section.description }],
+    });
+
+    if (section.placeholder_blocks.length > 0) {
+      content.push({
+        type: 'bulletList',
+        content: section.placeholder_blocks.map((block) => ({
+          type: 'listItem',
+          content: [
+            {
+              type: 'paragraph',
+              content: [{ type: 'text', text: block }],
+            },
+          ],
+        })),
+      });
+    }
+  });
+
+  return {
+    type: 'doc',
+    content,
+  };
+}
 
 /**
  * 画像をサーバーにアップロードし、長辺600px以下にリサイズされた data URL を取得する
@@ -293,6 +343,26 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
     window.addEventListener('editor-request-save', handler);
     return () => window.removeEventListener('editor-request-save', handler);
   }, []);
+
+  useEffect(() => {
+    const handler = (event: Event) => {
+      if (!editor) return;
+
+      const customEvent = event as CustomEvent<{ templateId?: string }>;
+      const templateId = customEvent.detail?.templateId;
+
+      if (!templateId || !isTemplateId(templateId)) return;
+
+      const confirmed = window.confirm('現在の本文をテンプレート内容で上書きします。よろしいですか？');
+      if (!confirmed) return;
+
+      editor.commands.setContent(buildTemplateContent(templateId));
+      requestSaveRef.current?.();
+    };
+
+    window.addEventListener('editor-apply-template', handler);
+    return () => window.removeEventListener('editor-apply-template', handler);
+  }, [editor]);
 
   const handleSave = () => {
     if (!editor) return;
