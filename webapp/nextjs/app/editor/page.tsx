@@ -18,7 +18,6 @@ import FileHandler from '@tiptap/extension-file-handler';
 import type { PressRelease } from '@/lib/types';
 import { getTemplateDefinition, type TemplateId } from '@/lib/templateLibrary';
 import styles from './page.module.css';
-import { Button } from '@/components/ui/button';
 import EpisodeForm from '@/components/Form/episodeForm';
 
 const PRESS_RELEASE_ID = 1;
@@ -549,6 +548,25 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
 
   const isLinkActive = editor?.isActive('link') ?? false;
 
+  const handleApplySuggestion = useCallback(
+    (suggestedTitle: string, suggestedContent: string) => {
+      if (!editor) return;
+      if (suggestedTitle) setTitle(suggestedTitle);
+      try {
+        const content =
+          typeof suggestedContent === 'string'
+            ? JSON.parse(suggestedContent)
+            : suggestedContent;
+        editor.commands.setContent(content);
+        requestSaveRef.current?.();
+      } catch (e) {
+        console.error('TipTap content の適用に失敗しました', e);
+        alert('構成案の反映に失敗しました。content の形式を確認してください。');
+      }
+    },
+    [editor]
+  );
+
   //HTML関連
   const handleDragOver = (event) => {
     event.preventDefault()
@@ -721,7 +739,7 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
           </div>
           <EditorContent editor={editor} className={styles.tiptap} />
         </div>
-        <EpisodeForm />
+        <EpisodeForm onApplySuggestion={handleApplySuggestion} />
       </main>
 
       {imageDialog.isOpen && (

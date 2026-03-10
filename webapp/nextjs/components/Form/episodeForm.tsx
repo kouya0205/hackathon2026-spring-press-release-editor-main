@@ -25,6 +25,13 @@ import {
 const initialState: EpisodeFormState = {
   success: false,
   message: '',
+  suggestedTitle: '',
+  suggestedContent: '',
+};
+
+export type EpisodeFormProps = {
+  /** AI 提案を Editor に反映するコールバック（title, TipTap content） */
+  onApplySuggestion?: (title: string, content: string) => void;
 };
 
 type QuestionFieldConfig = {
@@ -154,11 +161,26 @@ const CATEGORY_QUESTION_SETS: Record<AnnouncementType, CategoryQuestionSet> = {
   },
 };
 
-export default function EpisodeForm() {
+export default function EpisodeForm({ onApplySuggestion }: EpisodeFormProps) {
   const [state, formAction, isPending] = useActionState(
     createEpisodeAction,
     initialState
   );
+
+  const hasSuggestion =
+    state.success &&
+    (state.suggestedTitle != null || state.suggestedContent != null);
+  const canApply =
+    hasSuggestion &&
+    state.suggestedContent != null &&
+    onApplySuggestion != null;
+
+  const handleApplySuggestion = () => {
+    if (!canApply || !onApplySuggestion) return;
+    const title = state.suggestedTitle ?? '';
+    const content = state.suggestedContent ?? '';
+    onApplySuggestion(title, content);
+  };
   const [selectedCategory, setSelectedCategory] = useState<AnnouncementType | ''>('');
   const activeQuestionSet = selectedCategory
     ? CATEGORY_QUESTION_SETS[selectedCategory]
@@ -377,10 +399,19 @@ export default function EpisodeForm() {
             </div>
           </div>
         </CardContent>
-        <CardFooter>
+        <CardFooter className="flex flex-col gap-2 sm:flex-row">
           <Button type="submit" disabled={isPending}>
             {isPending ? '送信中...' : '送信する'}
           </Button>
+          {canApply && (
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={handleApplySuggestion}
+            >
+              Editorに反映
+            </Button>
+          )}
         </CardFooter>
       </form>
     </Card>
