@@ -31,8 +31,7 @@ export async function createEpisodeAction(
       code?: string;
       message?: string;
       errors?: Record<string, string>;
-      title?: string;
-      content?: string;
+      [key: string]: unknown;
     };
 
     if (!response.ok) {

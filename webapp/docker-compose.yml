@@ -22,6 +22,8 @@ services:
     container_name: press-release-app
     ports:
       - "8080:8080"
+    env_file:
+      - ./php/.env  # OPENAI_API_KEY 等を読み込む（php/.env を用意すること）
     environment:
       DB_HOST: postgresql
       DB_PORT: 5432

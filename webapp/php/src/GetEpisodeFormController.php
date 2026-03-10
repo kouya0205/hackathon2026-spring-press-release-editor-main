@@ -15,6 +15,8 @@ class GetEpisodeFormController
      * @param array $args URLパラメータ（idを含む）
      * @return ResponseInterface JSONレスポンスを返す
      */
+    private static $DEFAULT_PROMPT = "こんにちは";
+
     public static function handle(
         ServerRequestInterface $request,
         ResponseInterface $response,
@@ -28,6 +30,7 @@ class GetEpisodeFormController
         $title = $data['title'] ?? null;
 
         $result = [
+            'announcement_type' => $data['announcement_type'] ?? null,
             'company_name' => $data['company_name'] ?? null,
             'contact_name' => $data['contact_name'] ?? null,
             'email' => $data['email'] ?? null,
@@ -40,9 +43,10 @@ class GetEpisodeFormController
         ];
 
         //OpenAI APIを呼び出して、エピソードフォームの内容を生成する処理をここに追加
+        $aiConnection = new AIConnection();
+        $resMessage = $aiConnection->sendMessage(self::$DEFAULT_PROMPT);
 
-
-        $response->getBody()->write(json_encode($result));
+        $response->getBody()->write($resMessage);   //JSONのまま返却
 
         return $response->withHeader('Content-Type', 'application/json');
     }
