@@ -63,6 +63,41 @@
   padding: 1.5rem;
   background-color: white;
   min-height: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.editorSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.editorSectionTitle {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #495057;
+}
+
+/* AI構成案パネル（EpisodeForm と入れ替え表示） */
+.aiPanel {
+  max-width: 28rem;
+  width: 100%;
+  shrink: 0;
+}
+
+.aiPanelHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.aiPanelActions {
+  display: flex;
+  gap: 0.5rem;
 }
 
 .titleInputWrapper {

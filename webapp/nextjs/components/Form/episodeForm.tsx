@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState, useState } from 'react';
+import { useActionState, useState, useEffect } from 'react';
 import {
   createEpisodeAction,
   type EpisodeFormState,
@@ -30,7 +30,9 @@ const initialState: EpisodeFormState = {
 };
 
 export type EpisodeFormProps = {
-  /** AI 提案を Editor に反映するコールバック（title, TipTap content） */
+  /** AI レスポンス受信時に呼ばれるコールバック（AI 提案を第2エディタに表示する用途） */
+  onSuggestionReceived?: (title: string, content: string) => void;
+  /** AI 提案を第1エディタ（DB連携）に反映するコールバック（「Editorに反映」クリック時） */
   onApplySuggestion?: (title: string, content: string) => void;
 };
 
@@ -161,11 +163,27 @@ const CATEGORY_QUESTION_SETS: Record<AnnouncementType, CategoryQuestionSet> = {
   },
 };
 
-export default function EpisodeForm({ onApplySuggestion }: EpisodeFormProps) {
+export default function EpisodeForm({
+  onSuggestionReceived,
+  onApplySuggestion,
+}: EpisodeFormProps) {
   const [state, formAction, isPending] = useActionState(
     createEpisodeAction,
     initialState
   );
+
+  // AI レスポンス受信時に親へ通知（第2エディタに表示する用途）
+  useEffect(() => {
+    if (
+      state.success &&
+      state.suggestedContent != null &&
+      onSuggestionReceived != null
+    ) {
+      const title = state.suggestedTitle ?? '';
+      const content = state.suggestedContent;
+      onSuggestionReceived(title, content);
+    }
+  }, [state.success, state.suggestedTitle, state.suggestedContent, onSuggestionReceived]);
 
   const hasSuggestion =
     state.success &&

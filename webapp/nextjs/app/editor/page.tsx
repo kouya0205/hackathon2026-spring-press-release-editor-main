@@ -21,6 +21,8 @@ import styles from './page.module.css';
 import EpisodeForm from '@/components/Form/episodeForm';
 
 const PRESS_RELEASE_ID = 1;
+
+const EMPTY_DOC = { type: 'doc', content: [{ type: 'paragraph', content: [] }] };
 const queryKey = ['press-release', PRESS_RELEASE_ID];
 const BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:8080';
 
@@ -198,6 +200,8 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
     url: '',
     alt: '',
   });
+  const [hasAiSuggestion, setHasAiSuggestion] = useState(false);
+  const latestSuggestionRef = useRef<{ title: string; content: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const requestSaveRef = useRef<() => void>(undefined);
 
@@ -281,6 +285,101 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
       setCharCount(editor.storage.characterCount.characters());
     },
   });
+
+  // 第2エディタ: AI レスポンス専用（初期は空）
+  const aiEditor = useEditor({
+    extensions: [
+      Document,
+      Heading,
+      Paragraph,
+      Text,
+      Link.configure({
+        openOnClick: true,
+        HTMLAttributes: {
+          class: styles.editorLink,
+          rel: 'noopener noreferrer',
+          target: '_blank',
+        },
+      }),
+      CharacterCount,
+      Bold,
+      Italic,
+      Underline,
+      BulletList,
+      OrderedList,
+      ListItem,
+      Image,
+      FileHandler.configure({
+        allowedMimeTypes: ['image/png', 'image/jpeg', 'image/gif'],
+        onDrop: (currentEditor, files, pos) => {
+          const file = files[0];
+          if (!file) return;
+
+          uploadImage(file)
+            .then((src) => {
+              currentEditor
+                .chain()
+                .insertContentAt(pos, {
+                  type: 'image',
+                  attrs: { src },
+                })
+                .focus()
+                .run();
+              window.dispatchEvent(new CustomEvent('editor-request-save'));
+            })
+            .catch((err) => {
+              alert(err instanceof Error ? err.message : '画像のアップロードに失敗しました');
+            });
+        },
+        onPaste: (currentEditor, files, htmlContent) => {
+          if (htmlContent) return false;
+
+          const file = files[0];
+          if (!file) return;
+
+          uploadImage(file)
+            .then((src) => {
+              currentEditor
+                .chain()
+                .insertContentAt(currentEditor.state.selection.anchor, {
+                  type: 'image',
+                  attrs: { src },
+                })
+                .focus()
+                .run();
+              window.dispatchEvent(new CustomEvent('editor-request-save'));
+            })
+            .catch((err) => {
+              alert(err instanceof Error ? err.message : '画像のアップロードに失敗しました');
+            });
+        },
+      }),
+      Image.configure({
+        allowBase64: true,
+      }),
+    ],
+    content: EMPTY_DOC,
+    immediatelyRender: false,
+  });
+
+  // AI レスポンスを受信したら第2エディタに表示し、右パネルを入れ替え
+  const handleSuggestionReceived = useCallback(
+    (suggestedTitle: string, suggestedContent: string) => {
+      latestSuggestionRef.current = { title: suggestedTitle, content: suggestedContent };
+      setHasAiSuggestion(true);
+      if (!aiEditor) return;
+      try {
+        const content =
+          typeof suggestedContent === 'string'
+            ? JSON.parse(suggestedContent)
+            : suggestedContent;
+        aiEditor.commands.setContent(content);
+      } catch (e) {
+        console.error('AI レスポンスの表示に失敗しました', e);
+      }
+    },
+    [aiEditor]
+  );
 
   const { isPending, mutate } = useSavePressReleaseMutation();
   const initialContentStr =
@@ -559,6 +658,7 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
             : suggestedContent;
         editor.commands.setContent(content);
         requestSaveRef.current?.();
+        setHasAiSuggestion(false); // 反映後にフォーム表示に戻す
       } catch (e) {
         console.error('TipTap content の適用に失敗しました', e);
         alert('構成案の反映に失敗しました。content の形式を確認してください。');
@@ -567,28 +667,37 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
     [editor]
   );
 
+  const handleApplyFromAiPanel = useCallback(() => {
+    const suggestion = latestSuggestionRef.current;
+    if (suggestion) {
+      handleApplySuggestion(suggestion.title, suggestion.content);
+    }
+  }, [handleApplySuggestion]);
+
   //HTML関連
-  const handleDragOver = (event) => {
-    event.preventDefault()
-  }
+  const handleDragOver = (event: React.DragEvent) => {
+    event.preventDefault();
+  };
 
-  const handleDrop = (event) => {
-    event.preventDefault()
-    const file = event.dataTransfer.files[0]
+  const handleDrop = (event: React.DragEvent) => {
+    event.preventDefault();
+    const file = event.dataTransfer.files[0];
 
-    if (!file) return
+    if (!file) return;
 
     if (file.type === 'text/html') {
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        const htmlContent = e.target.result
-        editor?.commands.setContent(htmlContent, false) // false で HTML として解釈
-      }
-      reader.readAsText(file)
+      const reader = new FileReader();
+      reader.onload = (e: ProgressEvent<FileReader>) => {
+        const htmlContent = e.target?.result;
+        if (typeof htmlContent === 'string') {
+          editor?.commands.setContent(htmlContent, { emitUpdate: false });
+        }
+      };
+      reader.readAsText(file);
     } else {
-      alert('HTMLファイルをドロップしてください')
+      alert('HTMLファイルをドロップしてください');
     }
-  }
+  };
 
   return (
     <div className={styles.container}>
@@ -737,9 +846,40 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
               番号付き
             </button>
           </div>
-          <EditorContent editor={editor} className={styles.tiptap} />
+          <div className={styles.editorSection}>
+            <h3 className={styles.editorSectionTitle}>保存データ（データベース）</h3>
+            <EditorContent editor={editor} className={styles.tiptap} />
+          </div>
         </div>
-        <EpisodeForm onApplySuggestion={handleApplySuggestion} />
+        {hasAiSuggestion ? (
+          <div className={`${styles.editorWrapper} ${styles.aiPanel}`}>
+            <div className={styles.aiPanelHeader}>
+              <h3 className={styles.editorSectionTitle}>AI構成案</h3>
+              <div className={styles.aiPanelActions}>
+                <button
+                  type="button"
+                  onClick={handleApplyFromAiPanel}
+                  className={styles.saveButton}
+                >
+                  Editorに反映
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setHasAiSuggestion(false)}
+                  className={styles.buttonSecondary}
+                >
+                  フォームに戻る
+                </button>
+              </div>
+            </div>
+            <EditorContent editor={aiEditor} className={styles.tiptap} />
+          </div>
+        ) : (
+          <EpisodeForm
+            onSuggestionReceived={handleSuggestionReceived}
+            onApplySuggestion={handleApplySuggestion}
+          />
+        )}
       </main>
 
       {imageDialog.isOpen && (
