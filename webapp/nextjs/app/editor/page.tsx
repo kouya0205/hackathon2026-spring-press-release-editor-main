@@ -116,6 +116,8 @@ interface LinkDialogState {
   url: string;
   displayText: string;
   isEdit: boolean;
+  selectionFrom: number | null;
+  selectionTo: number | null;
 }
 
 interface ImageDialogState {
@@ -135,6 +137,8 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
     url: '',
     displayText: '',
     isEdit: false,
+    selectionFrom: null,
+    selectionTo: null,
   });
   const [imageDialog, setImageDialog] = useState<ImageDialogState>({
     isOpen: false,
@@ -321,6 +325,8 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
       url: existingLink.href ?? '',
       displayText: selectedText,
       isEdit: !!existingLink.href,
+      selectionFrom: empty ? null : from,
+      selectionTo: empty ? null : to,
     });
   }, [editor]);
 
@@ -331,32 +337,77 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
     const trimmedUrl = url.trim();
 
     if (!trimmedUrl) {
-      editor.chain().focus().unsetLink().run();
-      setLinkDialog({ isOpen: false, url: '', displayText: '', isEdit: false });
+      editor.chain().focus().extendMarkRange('link').unsetLink().run();
+      setLinkDialog({
+        isOpen: false,
+        url: '',
+        displayText: '',
+        isEdit: false,
+        selectionFrom: null,
+        selectionTo: null,
+      });
       return;
     }
 
-    const { empty } = editor.state.selection;
+    const selectionFrom = linkDialog.selectionFrom;
+    const selectionTo = linkDialog.selectionTo;
+    const hasStoredSelection =
+      selectionFrom !== null && selectionTo !== null && selectionFrom < selectionTo;
 
-    if (empty && displayText.trim()) {
-      editor.chain().focus()
-        .insertContent(`<a href="${trimmedUrl}" target="_blank" rel="noopener noreferrer">${displayText}</a>`)
+    if (hasStoredSelection) {
+      editor
+        .chain()
+        .focus()
+        .setTextSelection({ from: selectionFrom, to: selectionTo })
+        .setLink({ href: trimmedUrl })
         .run();
-    } else if (!empty) {
-      editor.chain().focus().setLink({ href: trimmedUrl }).run();
+    } else if (linkDialog.isEdit) {
+      editor.chain().focus().extendMarkRange('link').setLink({ href: trimmedUrl }).run();
+    } else {
+      const linkText = displayText.trim() || trimmedUrl;
+      editor
+        .chain()
+        .focus()
+        .insertContent({
+          type: 'text',
+          text: linkText,
+          marks: [{ type: 'link', attrs: { href: trimmedUrl } }],
+        })
+        .run();
     }
 
-    setLinkDialog({ isOpen: false, url: '', displayText: '', isEdit: false });
+    setLinkDialog({
+      isOpen: false,
+      url: '',
+      displayText: '',
+      isEdit: false,
+      selectionFrom: null,
+      selectionTo: null,
+    });
   }, [editor, linkDialog]);
 
   const removeLink = useCallback(() => {
     if (!editor) return;
-    editor.chain().focus().unsetLink().run();
-    setLinkDialog({ isOpen: false, url: '', displayText: '', isEdit: false });
+    editor.chain().focus().extendMarkRange('link').unsetLink().run();
+    setLinkDialog({
+      isOpen: false,
+      url: '',
+      displayText: '',
+      isEdit: false,
+      selectionFrom: null,
+      selectionTo: null,
+    });
   }, [editor]);
 
   const cancelDialog = useCallback(() => {
-    setLinkDialog({ isOpen: false, url: '', displayText: '', isEdit: false });
+    setLinkDialog({
+      isOpen: false,
+      url: '',
+      displayText: '',
+      isEdit: false,
+      selectionFrom: null,
+      selectionTo: null,
+    });
     editor?.commands.focus();
   }, [editor]);
 
