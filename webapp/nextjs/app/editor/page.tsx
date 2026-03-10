@@ -17,6 +17,8 @@ import Image from '@tiptap/extension-image';
 import FileHandler from '@tiptap/extension-file-handler';
 import type { PressRelease } from '@/lib/types';
 import styles from './page.module.css';
+import { Button } from '@/components/ui/button';
+import EpisodeForm from '@/components/Form/episodeForm';
 
 const PRESS_RELEASE_ID = 1;
 const queryKey = ['press-release', PRESS_RELEASE_ID];
@@ -103,7 +105,9 @@ export default function EditorPage() {
     );
   }
 
-  return <Editor initialTitle={data.title} initialContent={JSON.parse(data.content)} />;
+  return (
+    <Editor initialTitle={data.title} initialContent={JSON.parse(data.content)} />
+  );
 }
 
 interface EditorProps {
@@ -516,7 +520,7 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
         </div>
       </header>
 
-      <main className={styles.main}>
+      <main className='flex justify-evenly'>
         <div className={styles.editorWrapper} onDrop={handleDrop} onDragOver={handleDragOver}>
           <div className={styles.titleInputWrapper}>
             <input
@@ -647,6 +651,7 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
           </div>
           <EditorContent editor={editor} className={styles.tiptap} />
         </div>
+        <EpisodeForm />
       </main>
 
       {imageDialog.isOpen && (
