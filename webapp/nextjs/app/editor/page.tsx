@@ -740,6 +740,33 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
           <div className={styles.toolbar}>
             <button
               type="button"
+              onClick={() => editor?.chain().focus().setParagraph().run()}
+              className={`${styles.toolbarButton} ${editor?.isActive('paragraph') ? styles.toolbarButtonActive : ''}`}
+              title="段落"
+              disabled={!editor}
+            >
+              段落
+            </button>
+            <button
+              type="button"
+              onClick={() => editor?.chain().focus().toggleHeading({ level: 1 }).run()}
+              className={`${styles.toolbarButton} ${editor?.isActive('heading', { level: 1 }) ? styles.toolbarButtonActive : ''}`}
+              title="見出し1"
+              disabled={!editor}
+            >
+              H1
+            </button>
+            <button
+              type="button"
+              onClick={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()}
+              className={`${styles.toolbarButton} ${editor?.isActive('heading', { level: 2 }) ? styles.toolbarButtonActive : ''}`}
+              title="見出し2"
+              disabled={!editor}
+            >
+              H2
+            </button>
+            <button
+              type="button"
               onClick={() => editor?.chain().focus().toggleBold().run()}
               className={`${styles.toolbarButton} ${editor?.isActive('bold') ? styles.toolbarButtonActive : ''}`}
               title="太字 (Ctrl+B)"
@@ -785,7 +812,6 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
             </button>
           </div>
           <div className={styles.editorSection}>
-            <h3 className={styles.editorSectionTitle}>保存データ（データベース）</h3>
             <EditorContent editor={editor} className={styles.tiptap} />
           </div>
         </div>
@@ -844,7 +870,7 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
             <div className={styles.dialogBody}>
               <div className={styles.formGroup}>
                 <label htmlFor="image-url" className={styles.formLabel}>
-                  画像URL <span className={styles.required}>*</span>
+                  URLから画像 <span className={styles.required}>*</span>
                 </label>
                 <input
                   id="image-url"
