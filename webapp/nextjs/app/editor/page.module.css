@@ -81,11 +81,25 @@
   color: #495057;
 }
 
-/* AI構成案パネル（EpisodeForm と入れ替え表示） */
+/* 右パネル Tabs */
+.rightPanelTabs {
+  width: 100%;
+  max-width: 28rem;
+  shrink: 0;
+}
+
+.tabsList {
+  margin-bottom: 0.75rem;
+}
+
+.tabsContent {
+  margin-top: 0;
+}
+
+/* AI構成案パネル */
 .aiPanel {
   max-width: 28rem;
   width: 100%;
-  shrink: 0;
 }
 
 .aiPanelHeader {

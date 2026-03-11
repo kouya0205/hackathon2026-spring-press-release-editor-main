@@ -19,6 +19,7 @@ import type { PressRelease } from '@/lib/types';
 import { getTemplateDefinition, type TemplateId } from '@/lib/templateLibrary';
 import { getBrowserBackendBaseUrl } from '@/lib/backendUrl';
 import styles from './page.module.css';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import EpisodeForm from '@/components/Form/episodeForm';
 
 const PRESS_RELEASE_ID = 1;
@@ -275,7 +276,7 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
     url: '',
     alt: '',
   });
-  const [hasAiSuggestion, setHasAiSuggestion] = useState(false);
+  const [rightPanelTab, setRightPanelTab] = useState<'form' | 'ai'>('form');
   const latestSuggestionRef = useRef<{ title: string; content: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const requestSaveRef = useRef<() => void>(undefined);
@@ -301,11 +302,11 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
     immediatelyRender: false,
   });
 
-  // AI レスポンスを受信したら第2エディタに表示し、右パネルを入れ替え
+  // AI レスポンスを受信したら第2エディタに表示し、AI構成案タブへ切り替え
   const handleSuggestionReceived = useCallback(
     (suggestedTitle: string, suggestedContent: string) => {
       latestSuggestionRef.current = { title: suggestedTitle, content: suggestedContent };
-      setHasAiSuggestion(true);
+      setRightPanelTab('ai');
       if (!aiEditor) return;
       try {
         const content =
@@ -622,7 +623,7 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
             : suggestedContent;
         editor.commands.setContent(content);
         requestSaveRef.current?.();
-        setHasAiSuggestion(false); // 反映後にフォーム表示に戻す
+        setRightPanelTab('form'); // 反映後にフォームタブへ戻す
       } catch (e) {
         console.error('TipTap content の適用に失敗しました', e);
         alert('構成案の反映に失敗しました。content の形式を確認してください。');
@@ -829,35 +830,38 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
             <EditorContent editor={editor} className={styles.tiptap} />
           </div>
         </div>
-        {hasAiSuggestion ? (
-          <div className={`${styles.editorWrapper} ${styles.aiPanel}`}>
-            <div className={styles.aiPanelHeader}>
-              <h3 className={styles.editorSectionTitle}>AI構成案</h3>
-              <div className={styles.aiPanelActions}>
-                <button
-                  type="button"
-                  onClick={handleApplyFromAiPanel}
-                  className={styles.saveButton}
-                >
-                  Editorに反映
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setHasAiSuggestion(false)}
-                  className={styles.buttonSecondary}
-                >
-                  フォームに戻る
-                </button>
+        <Tabs
+          value={rightPanelTab}
+          onValueChange={(v) => setRightPanelTab(v as 'form' | 'ai')}
+          className={styles.rightPanelTabs}
+        >
+          <TabsList className={styles.tabsList}>
+            <TabsTrigger value="form">構成フォーム</TabsTrigger>
+            <TabsTrigger value="ai">AI構成案</TabsTrigger>
+          </TabsList>
+          <TabsContent value="form" className={styles.tabsContent}>
+            <EpisodeForm
+              onSuggestionReceived={handleSuggestionReceived}
+              onApplySuggestion={handleApplySuggestion}
+            />
+          </TabsContent>
+          <TabsContent value="ai" className={styles.tabsContent}>
+            <div className={`${styles.editorWrapper} ${styles.aiPanel}`}>
+              <div className={styles.aiPanelHeader}>
+                <div className={styles.aiPanelActions}>
+                  <button
+                    type="button"
+                    onClick={handleApplyFromAiPanel}
+                    className={styles.saveButton}
+                  >
+                    Editorに反映
+                  </button>
+                </div>
               </div>
+              <EditorContent editor={aiEditor} className={styles.tiptap} />
             </div>
-            <EditorContent editor={aiEditor} className={styles.tiptap} />
-          </div>
-        ) : (
-          <EpisodeForm
-            onSuggestionReceived={handleSuggestionReceived}
-            onApplySuggestion={handleApplySuggestion}
-          />
-        )}
+          </TabsContent>
+        </Tabs>
       </main>
 
       {imageDialog.isOpen && (

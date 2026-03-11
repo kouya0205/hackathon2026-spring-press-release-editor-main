@@ -5,6 +5,7 @@ import {
   createEpisodeAction,
   type EpisodeFormState,
 } from '@/server/action/createEpisodeAction';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -205,7 +206,25 @@ export default function EpisodeForm({
     : DEFAULT_QUESTION_SET;
 
   return (
-    <Card className="w-full max-w-md shrink-0">
+    <Card className="relative w-full max-w-md shrink-0 overflow-hidden">
+      {isPending && (
+        <div
+          className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 rounded-lg bg-background/80 backdrop-blur-sm"
+          aria-live="polite"
+          aria-busy="true"
+        >
+          <Image
+            src="/pr-times-icon.png"
+            alt=""
+            width={56}
+            height={56}
+            className="animate-spin object-contain"
+          />
+          <p className="text-sm font-medium text-muted-foreground">
+            構成を生成中...
+          </p>
+        </div>
+      )}
       <form action={formAction}>
         <CardHeader>
           <CardTitle>プレスリリース構成フォーム</CardTitle>
