@@ -158,22 +158,33 @@
   border-color: #0056b3;
 }
 
+.toolbarSelect {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  background-color: none;
+  color: #333;
+  border: none;
+  border-radius: 4px;
+}
+
+.toolbarSelect:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .tiptap {
   outline: none;
   min-height: 400px;
 }
 
-.tiptap p {
-  margin: 1em 0;
-  line-height: 1.6;
-  font-size: 1rem;
+.tiptap> :first-child {
+  margin-top: 0;
 }
 
 .tiptap ul,
 .tiptap ol {
-  margin: 1em 0;
-  padding-left: 2em;
-  list-style-position: outside;
+  padding: 0 1rem;
+  margin: 1.25rem 1rem 1.25rem 0.4rem;
 }
 
 .tiptap ul {
@@ -184,17 +195,81 @@
   list-style-type: decimal;
 }
 
-.tiptap li {
-  margin: 0.25em 0;
-  line-height: 1.6;
-}
-
 .tiptap li p {
-  margin: 0.25em 0;
+  margin-top: 0.25em;
+  margin-bottom: 0.25em;
 }
 
-.tiptap li p:first-child {
-  margin-top: 0;
+.tiptap h1,
+.tiptap h2,
+.tiptap h3,
+.tiptap h4,
+.tiptap h5,
+.tiptap h6 {
+  line-height: 1.1;
+  margin-top: 2.5rem;
+  text-wrap: pretty;
+}
+
+.tiptap h1,
+.tiptap h2 {
+  margin-top: 3.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.tiptap h1 {
+  font-size: 1.4rem;
+}
+
+.tiptap h2 {
+  font-size: 1.2rem;
+}
+
+.tiptap h3 {
+  font-size: 1.1rem;
+}
+
+.tiptap h4,
+.tiptap h5,
+.tiptap h6 {
+  font-size: 1rem;
+}
+
+.tiptap code {
+  background-color: var(--purple-light, #efe7ff);
+  border-radius: 0.4rem;
+  color: var(--black, #212529);
+  font-size: 0.85rem;
+  padding: 0.25em 0.3em;
+}
+
+.tiptap pre {
+  background: var(--black, #212529);
+  border-radius: 0.5rem;
+  color: var(--white, #ffffff);
+  font-family: "JetBrainsMono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  margin: 1.5rem 0;
+  padding: 0.75rem 1rem;
+  overflow-x: auto;
+}
+
+.tiptap pre code {
+  background: none;
+  color: inherit;
+  font-size: 0.8rem;
+  padding: 0;
+}
+
+.tiptap blockquote {
+  border-left: 3px solid var(--gray-3, #ced4da);
+  margin: 1.5rem 0;
+  padding-left: 1rem;
+}
+
+.tiptap hr {
+  border: none;
+  border-top: 1px solid var(--gray-2, #dee2e6);
+  margin: 2rem 0;
 }
 
 .tiptap img {

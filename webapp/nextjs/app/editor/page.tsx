@@ -34,7 +34,9 @@ const TEMPLATE_IDS: TemplateId[] = ['T1', 'T2', 'T3', 'T4', 'T5', 'T6'];
 function createEditorExtensions() {
   return [
     Document,
-    Heading,
+    Heading.configure({
+      levels: [1, 2, 3],
+    }),
     Paragraph,
     Text,
     Link.configure({
@@ -583,6 +585,31 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
   );
 
   const isLinkActive = editor?.isActive('link') ?? false;
+  const headingSelectValue = editor?.isActive('heading', { level: 1 })
+    ? 'h1'
+    : editor?.isActive('heading', { level: 2 })
+      ? 'h2'
+      : editor?.isActive('heading', { level: 3 })
+        ? 'h3'
+        : 'paragraph';
+
+  const handleHeadingChange = useCallback(
+    (event: React.ChangeEvent<HTMLSelectElement>) => {
+      if (!editor) return;
+
+      const value = event.target.value;
+      if (value === 'paragraph') {
+        editor.chain().focus().setParagraph().run();
+        return;
+      }
+
+      const level = Number(value.replace('h', ''));
+      if (level === 1 || level === 2 || level === 3) {
+        editor.chain().focus().setHeading({ level }).run();
+      }
+    },
+    [editor]
+  );
 
   const handleApplySuggestion = useCallback(
     (suggestedTitle: string, suggestedContent: string) => {
@@ -683,6 +710,67 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
             <div>
               タイトル文字数: {title?.length} / {MAX_CHAR_TITLE}
             </div>
+
+          </div>
+          <div className={styles.toolbar}>
+            <select
+              value={headingSelectValue}
+              onChange={handleHeadingChange}
+              className={styles.toolbarSelect}
+              title="見出しスタイル"
+              aria-label="見出しスタイル"
+              disabled={!editor}
+            >
+              <option value="paragraph">段落</option>
+              <option value="h1">見出し1 (H1)</option>
+              <option value="h2">見出し2 (H2)</option>
+              <option value="h3">見出し3 (H3)</option>
+            </select>
+            <button
+              type="button"
+              onClick={() => editor?.chain().focus().toggleBold().run()}
+              className={`${styles.toolbarButton} ${editor?.isActive('bold') ? styles.toolbarButtonActive : ''}`}
+              title="太字 (Ctrl+B)"
+              disabled={!editor}
+            >
+              太字
+            </button>
+            <button
+              type="button"
+              onClick={() => editor?.chain().focus().toggleItalic().run()}
+              className={`${styles.toolbarButton} ${editor?.isActive('italic') ? styles.toolbarButtonActive : ''}`}
+              title="斜体 (Ctrl+I)"
+              disabled={!editor}
+            >
+              斜体
+            </button>
+            <button
+              type="button"
+              onClick={() => editor?.chain().focus().toggleUnderline().run()}
+              className={`${styles.toolbarButton} ${editor?.isActive('underline') ? styles.toolbarButtonActive : ''}`}
+              title="下線"
+              disabled={!editor}
+            >
+              下線
+            </button>
+            <button
+              type="button"
+              onClick={() => editor?.chain().focus().toggleBulletList().run()}
+              className={`${styles.toolbarButton} ${editor?.isActive('bulletList') ? styles.toolbarButtonActive : ''}`}
+              title="箇条書き (Ctrl+Shift+8)"
+              disabled={!editor}
+            >
+              箇条書き
+            </button>
+            <button
+              type="button"
+              onClick={() => editor?.chain().focus().toggleOrderedList().run()}
+              className={`${styles.toolbarButton} ${editor?.isActive('orderedList') ? styles.toolbarButtonActive : ''}`}
+              title="番号付きリスト (Ctrl+Shift+7)"
+              disabled={!editor}
+            >
+              番号付き
+            </button>
             <button
               type="button"
               onClick={openLinkDialog}
@@ -737,55 +825,7 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
               aria-hidden="true"
             />
           </div>
-          <div className={styles.toolbar}>
-            <button
-              type="button"
-              onClick={() => editor?.chain().focus().toggleBold().run()}
-              className={`${styles.toolbarButton} ${editor?.isActive('bold') ? styles.toolbarButtonActive : ''}`}
-              title="太字 (Ctrl+B)"
-              disabled={!editor}
-            >
-              太字
-            </button>
-            <button
-              type="button"
-              onClick={() => editor?.chain().focus().toggleItalic().run()}
-              className={`${styles.toolbarButton} ${editor?.isActive('italic') ? styles.toolbarButtonActive : ''}`}
-              title="斜体 (Ctrl+I)"
-              disabled={!editor}
-            >
-              斜体
-            </button>
-            <button
-              type="button"
-              onClick={() => editor?.chain().focus().toggleUnderline().run()}
-              className={`${styles.toolbarButton} ${editor?.isActive('underline') ? styles.toolbarButtonActive : ''}`}
-              title="下線"
-              disabled={!editor}
-            >
-              下線
-            </button>
-            <button
-              type="button"
-              onClick={() => editor?.chain().focus().toggleBulletList().run()}
-              className={`${styles.toolbarButton} ${editor?.isActive('bulletList') ? styles.toolbarButtonActive : ''}`}
-              title="箇条書き (Ctrl+Shift+8)"
-              disabled={!editor}
-            >
-              箇条書き
-            </button>
-            <button
-              type="button"
-              onClick={() => editor?.chain().focus().toggleOrderedList().run()}
-              className={`${styles.toolbarButton} ${editor?.isActive('orderedList') ? styles.toolbarButtonActive : ''}`}
-              title="番号付きリスト (Ctrl+Shift+7)"
-              disabled={!editor}
-            >
-              番号付き
-            </button>
-          </div>
           <div className={styles.editorSection}>
-            <h3 className={styles.editorSectionTitle}>保存データ（データベース）</h3>
             <EditorContent editor={editor} className={styles.tiptap} />
           </div>
         </div>
@@ -844,7 +884,7 @@ function Editor({ initialTitle, initialContent }: EditorProps) {
             <div className={styles.dialogBody}>
               <div className={styles.formGroup}>
                 <label htmlFor="image-url" className={styles.formLabel}>
-                  画像URL <span className={styles.required}>*</span>
+                  URLから画像 <span className={styles.required}>*</span>
                 </label>
                 <input
                   id="image-url"
