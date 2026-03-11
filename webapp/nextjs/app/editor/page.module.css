@@ -193,6 +193,7 @@
 
 .tiptap> :first-child {
   margin-top: 0;
+  min-height: 300px;
 }
 
 .tiptap ul,
